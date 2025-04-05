@@ -418,7 +418,7 @@ const UploadDocument = ({ open, onClose, file }) => {
     let config = {
       method: "post",
       maxBodyLength: Infinity,
-      url: "http://localhost:8000/uploadfile",
+      url: "http://127.0.0.1:8000/uploadfile",
       data: data,
       
     };

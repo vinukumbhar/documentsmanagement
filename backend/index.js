@@ -9,6 +9,7 @@ const app = express();
 const dbconnect = require("./database/db");
 const File = require("./FileModel")
 const clientDocRoutes = require("./clientDocRoutes")
+const adminRoutes = require("./Routes.js/AdminRoutes")
 // app.use(cors({ origin: "http://localhost:3000" })); // Allow frontend to access API
 app.use(cors());
 app.use(express.json()); // Allows parsing JSON body
@@ -41,12 +42,19 @@ app.use(express.urlencoded({ extended: true })); // Allows parsing form data
 // Set up multer storage configuration
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    // Log and get destination path from the request body
+    // // Log and get destination path from the request body
     const destinationPath = req.body.destinationPath || "uploads"; // Default to 'uploads' if not provided
     console.log(destinationPath);
 
     // Set the destination path
     cb(null, destinationPath);
+//     const rawPath = req.body.destinationPath || "default";
+//     const targetPath = path.join(__dirname, "uploads", rawPath);
+// console.log("jh",targetPath)
+//     // Create directory if it doesn't exist
+//     fs.mkdirSync(targetPath, { recursive: true });
+
+//     cb(null, targetPath);
   },
   // filename: (req, file, cb) => {
   //   // Use the original file name, but ensure it is safe for filenames by handling spaces and special characters
@@ -316,7 +324,7 @@ app.get("/getFoldersWithContents", async (req, res) => {
 app.get("/allFolders/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const uploadsPath = path.join(__dirname, `./uploads/FolderTemplates/${id}`);
+    const uploadsPath = path.join(__dirname, `./uploads/FolderTemplates/${id}/Client Uploaded Documents/unsealed`);
 
     const getAllItems = async (dir) => {
       const items = await fs.readdir(dir);
@@ -340,85 +348,302 @@ app.get("/allFolders/:id", async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
-app.post("/uploadfile", upload.single("file"), async (req, res) => {
-  try {
-    let targetPath = req.body.destinationPath;
-    console.log("Received path:", targetPath);
+// app.post("/uploadfile", upload.single("file"), async (req, res) => {
+//   try {
+//     let targetPath = req.body.destinationPath;
+//     console.log("Received path:", targetPath);
 
-    if (!targetPath) {
-      return res.status(400).json({ message: "Path is required in the request body." });
-    }
+//     if (!targetPath) {
+//       return res.status(400).json({ message: "Path is required in the request body." });
+//     }
 
-    if (!req.file) {
-      return res.status(400).json({ message: "No file uploaded." });
-    }
+//     if (!req.file) {
+//       return res.status(400).json({ message: "No file uploaded." });
+//     }
 
-    targetPath = targetPath.replace(/\/\//g, "/");
+//     targetPath = targetPath.replace(/\/\//g, "/");
 
-    if (targetPath.includes("Firm Docs Shared With Client")) {
-      const defaultPermissions = {
-        canView: true,
-        canDownload: true,
-        canDelete: false,
-        canUpdate: false,
-      };
+//     if (targetPath.includes("Firm Docs Shared With Client")) {
+//       const defaultPermissions = {
+//         canView: true,
+//         canDownload: true,
+//         canDelete: false,
+//         canUpdate: false,
+//       };
     
-      const permissions = req.body.permissions || defaultPermissions;
+//       const permissions = req.body.permissions || defaultPermissions;
     
-      const newFile = new File({
-        filename: req.file.filename,
-        filePath: targetPath,
-        permissions: permissions,
-      });
+//       const newFile = new File({
+//         filename: req.file.filename,
+//         filePath: targetPath,
+//         permissions: permissions,
+//       });
     
-      await newFile.save();
-      console.log("✅ File saved in DB:", newFile);
+//       await newFile.save();
+//       console.log("✅ File saved in DB:", newFile);
     
-      return res.status(200).json({
-        message: "File uploaded and stored with permissions!",
-        filePath: `/${targetPath}/${req.file.filename}`,
-        permissions: newFile.permissions,
-      });
-    }
+//       return res.status(200).json({
+//         message: "File uploaded and stored with permissions!",
+//         filePath: `/${targetPath}/${req.file.filename}`,
+//         permissions: newFile.permissions,
+//       });
+//     }
     
 
-    // Other folders: skip DB store
-    return res.status(200).json({
-      message: "File uploaded successfully (not stored in DB).",
-      filePath: `/${targetPath}/${req.file.filename}`,
-    });
-  } catch (error) {
-    console.error("Upload error:", error);
-    return res.status(500).json({
-      message: "Something went wrong.",
-      error: error.message,
-    });
-  }
-});
-
-// app.post("/uploadfile", upload.single("file"), (req, res) => {
-//   // Extract path from the form data
-//   let targetPath = req.body.destinationPath;
-//   // Replace all occurrences of '//' with '/'
-//   targetPath = targetPath.replace(/\/\//g, "/");
-// console.log(targetPath)
-//   if (!targetPath) {
-//     return res
-//       .status(400)
-//       .send({ message: "Path is required in the request body." });
+//     // Other folders: skip DB store
+//     return res.status(200).json({
+//       message: "File uploaded successfully (not stored in DB).",
+//       filePath: `/${targetPath}/${req.file.filename}`,
+//     });
+//   } catch (error) {
+//     console.error("Upload error:", error);
+//     return res.status(500).json({
+//       message: "Something went wrong.",
+//       error: error.message,
+//     });
 //   }
-
-//   if (!req.file) {
-//     return res.status(400).send({ message: "No file uploaded." });
-//   }
-//   res.status(200).send({
-//     message: "File uploaded successfully!",
-//     // filePath: `${targetPath}/${req.file.filename}`,
-//   });
 // });
 
+app.post("/uploadfile", upload.single("file"), (req, res) => {
+  // Extract path from the form data
+  let targetPath = req.body.destinationPath;
+  // Replace all occurrences of '//' with '/'
+  targetPath = targetPath.replace(/\/\//g, "/");
+console.log(targetPath)
+  if (!targetPath) {
+    return res
+      .status(400)
+      .send({ message: "Path is required in the request body." });
+  }
+
+  if (!req.file) {
+    return res.status(400).send({ message: "No file uploaded." });
+  }
+  res.status(200).send({
+    message: "File uploaded successfully!",
+    // filePath: `${targetPath}/${req.file.filename}`,
+  });
+});
 
 
+app.post("/uploadfileinfirm", upload.single("file"), async (req, res) => {
+  // Extract the file path and permissions from the request
+  let targetPath = req.body.destinationPath;
+  console.log("jjjj",targetPath)
+  // Default permissions if not provided by user
+  const defaultPermissions = {
+    canView: true,
+    canDownload: true,
+    canDelete: false,
+    canUpdate: false,
+  };
+
+  // Use user-provided permissions or fall back to defaults
+  const permissions = req.body.permissions || defaultPermissions;
+
+  // Replace all occurrences of '//' with '/'
+  targetPath = targetPath.replace(/\/\//g, "/");
+
+  console.log("Vinayak");
+
+  if (!targetPath) {
+    return res.status(400).send({ message: "Path is required in the request body." });
+  }
+
+  if (!req.file) {
+    return res.status(400).send({ message: "No file uploaded." });
+  }
+
+  // Create a new file document with permissions
+  const newFile = new File({
+    filename: req.file.filename,
+    filePath: targetPath,
+    permissions: {
+      canView: permissions.canView,
+      canDownload: permissions.canDownload,
+      canDelete: permissions.canDelete,
+      canUpdate: permissions.canUpdate,
+    },
+  });
+
+  try {
+    // Save the file and permissions to MongoDB
+    await newFile.save();
+    res.status(200).send({
+      message: "File uploaded successfully!",
+      filePath: `/${targetPath}/${req.file.filename}`,
+      permissions: newFile.permissions,
+    });
+  } catch (error) {
+    res.status(500).send({ message: "Error saving file to database.", error: error.message });
+  }
+});
+app.post("/createFolderinfirm", async (req, res) => {
+  try {
+    const folderName = req.query.foldername;
+    const folderPath = req.query.path;
+
+    if (!folderName || !folderPath) {
+      return res.status(400).send({ error: "Both folder name and path are required" });
+    }
+
+    if (folderPath.includes("..")) {
+      return res.status(400).send({ error: "Invalid folder path" });
+    }
+
+    const relativeSubPath = folderPath.replace(/^.*FolderTemplates\//, "");
+    const basePath = path.join(__dirname, "uploads", "FolderTemplates");
+    const finalFolderPath = path.join(basePath, relativeSubPath, folderName);
+    const normalizedFolderPath = finalFolderPath.replace(/\\/g, "/");
+
+    // Create folder recursively
+    await fs.mkdir(normalizedFolderPath, { recursive: true });
+
+    // Create empty default file inside folder
+    const defaultFileName = "#$default.txt";
+    const fullFilePath = path.join(normalizedFolderPath, defaultFileName);
+    await fs.writeFile(fullFilePath, "");
+
+    // Relative path to store in DB
+    const relativeFilePath = fullFilePath.replace(path.join(__dirname, "/"), "").replace(/\\/g, "/");
+
+    const defaultPermissions = {
+      canView: true,
+      canDownload: true,
+      canDelete: false,
+      canUpdate: false,
+    };
+
+    const permissions = req.body.permissions || defaultPermissions;
+
+    const newFile = new File({
+      filename: defaultFileName,
+      filePath: relativeFilePath,
+      permissions,
+    });
+
+    await newFile.save();
+
+    return res.status(200).send({
+      message: "Folder and default.txt file created successfully!",
+      folderPath: relativeFilePath.replace(`/${defaultFileName}`, ""),
+      permissions: newFile.permissions,
+    });
+
+  } catch (error) {
+    console.error("Error creating folder:", error);
+    return res.status(500).send({ error: "Failed to create folder" });
+  }
+});
+// app.post("/createFolderinfirm", async (req, res) => {
+//   try {
+//     const folderName = req.query.foldername;
+//     const folderPath = req.query.path;
+
+//     if (!folderName || !folderPath) {
+//       return res.status(400).send({ error: "Both folder name and path are required" });
+//     }
+
+//     if (folderPath.includes("..")) {
+//       return res.status(400).send({ error: "Invalid folder path" });
+//     }
+// console.log("hghg",folderPath)
+//     const relativeSubPath = folderPath.replace(/^.*FolderTemplates\//, "");
+//     const basePath = path.join(__dirname, "uploads", "FolderTemplates");
+//     const finalFolderPath = path.join(basePath, relativeSubPath, folderName);
+//     const normalizedPath = finalFolderPath.replace(/\\/g, "/");
+
+//     await fs.mkdir(normalizedPath, { recursive: true });
+
+//     const fileFullPath = path.join(normalizedPath, "#$default.txt");
+//     await fs.writeFile(fileFullPath, ""); // create empty file
+
+//     const defaultPermissions = {
+//       canView: true,
+//       canDownload: true,
+//       canDelete: false,
+//       canUpdate: false,
+//     };
+
+//     const permissions = req.body.permissions || defaultPermissions;
+
+//     const newFile = new File({
+//       filename: "#$default.txt",
+//       filePath: fileFullPath,
+//       permissions,
+//     });
+
+//     await newFile.save();
+
+//     return res.status(200).send({
+//       message: "Folder and default.txt file created successfully!",
+//       folderPath: normalizedPath,
+//       permissions: newFile.permissions,
+//     });
+
+//   } catch (error) {
+//     console.error("Error creating folder:", error);
+//     return res.status(500).send({ error: "Failed to create folder" });
+//   }
+// });
+
+// app.get("/createFolderinfirm", async (req, res) => {
+//   try {
+//     const folderName = req.query.foldername; // Folder name
+//     const folderPath = req.query.path; // Parent directory path
+//     const targetPath = folderPath.replace(/\/\//g, "/");
+
+//     if (!folderName || !folderPath) {
+//       return res.status(400).send({ error: "Both folder name and path are required" });
+//     }
+
+//     // Default permissions
+//     const defaultPermissions = {
+//       canView: true,
+//       canDownload: true,
+//       canDelete: false,
+//       canUpdate: false,
+//     };
+
+//     const permissions = req.body.permissions || defaultPermissions;
+
+//     // Full path where the folder will be created
+//     // const fullPath = path.resolve(targetPath, folderName);
+//     const fullPath = path.resolve(targetPath, folderName).replace(/\\/g, "/");
+
+//     // Create the folder (recursive: true allows nested folder creation)
+//     await fs.mkdir(fullPath, { recursive: true });
+
+//     console.log("Folder created at:", fullPath);
+
+//     // Path of the new default.txt file inside the created folder
+//     // const defaultFilePath = path.join(targetPath,folderName, "default.txt").replace(/\\/g, "/");
+    
+// // console.log("fie path",defaultFilePath)
+//     // Write a dummy file
+//     // await fs.writeFile(defaultFilePath, "This is a dummy file.", "utf8");
+
+//     // Save file details to MongoDB
+//     const newFile = new File({
+//       filename: "#$default.txt",
+//       filePath: `${targetPath}/${folderName}`, // Store the absolute path of the file
+//       permissions,
+//     });
+
+//     await newFile.save();
+// // console.log(newFile)
+//     return res.status(200).send({
+//       message: "Folder and default.txt file created successfully!",
+//       folderPath: fullPath,
+//       filePath: `${targetPath}/${folderName}`,
+//       permissions: newFile.permissions,
+//     });
+
+//   } catch (error) {
+//     console.error("Error creating folder:", error);
+//     return res.status(500).send({ error: "Failed to create folder" });
+//   }
+// });
 
 // API to create a folder
 app.get("/createFolder", async (req, res) => {
@@ -618,5 +843,23 @@ app.get("/getUnsealedContent/:clientId", async (req, res) => {
   }
 });
 
+
+// Route to get all files
+app.get('/api/files', async (req, res) => {
+  
+  try {
+    const files = await File.find({}); // Fetch all files
+
+    res.status(200).json({
+      success: true,
+      count: files.length,
+      data: files,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
+});
+
 app.use("/clients", clientDocRoutes)
+app.use("/admin", adminRoutes)
 app.listen(8000, () => console.log("Server running on port 8000"));

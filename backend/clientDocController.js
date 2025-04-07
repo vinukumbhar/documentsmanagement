@@ -170,4 +170,7 @@ const getFilteredClientFolders = async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
+
+
+
 module.exports = { getClientAllFolders ,getClientPublicFolders, getUnsealedClientDocuments,getFilteredClientFolders};

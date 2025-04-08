@@ -8,7 +8,7 @@ const cors = require("cors");  // Import CORS middleware
 const app = express();
 const dbconnect = require("./database/db");
 const File = require("./FileModel")
-const clientDocRoutes = require("./clientDocRoutes")
+const clientDocRoutes = require("./Routes.js/ClientRoutes")
 const adminRoutes = require("./Routes.js/AdminRoutes")
 // app.use(cors({ origin: "http://localhost:3000" })); // Allow frontend to access API
 app.use(cors());
@@ -48,19 +48,9 @@ const storage = multer.diskStorage({
 
     // Set the destination path
     cb(null, destinationPath);
-//     const rawPath = req.body.destinationPath || "default";
-//     const targetPath = path.join(__dirname, "uploads", rawPath);
-// console.log("jh",targetPath)
-//     // Create directory if it doesn't exist
-//     fs.mkdirSync(targetPath, { recursive: true });
 
-//     cb(null, targetPath);
   },
-  // filename: (req, file, cb) => {
-  //   // Use the original file name, but ensure it is safe for filenames by handling spaces and special characters
-  //   const fileName = file.originalname.replace(/\s+/g, "_"); // Replace spaces with underscores
-  //   cb(null, fileName); // Save with the original file name
-  // },
+  
   filename: (req, file, cb) => {
     if (!file.originalname) {
       return cb(new Error("Invalid file"), false);
@@ -502,6 +492,7 @@ app.post("/createFolderinfirm", async (req, res) => {
     // Create empty default file inside folder
     const defaultFileName = "#$default.txt";
     const fullFilePath = path.join(normalizedFolderPath, defaultFileName);
+    const filePath = normalizedFolderPath;
     await fs.writeFile(fullFilePath, "");
 
     // Relative path to store in DB
@@ -518,7 +509,7 @@ app.post("/createFolderinfirm", async (req, res) => {
 
     const newFile = new File({
       filename: defaultFileName,
-      filePath: relativeFilePath,
+      filePath: filePath,
       permissions,
     });
 
@@ -860,6 +851,7 @@ app.get('/api/files', async (req, res) => {
   }
 });
 
+// app.use("/clients", clientDocRoutes)
 app.use("/clients", clientDocRoutes)
 app.use("/admin", adminRoutes)
 app.listen(8000, () => console.log("Server running on port 8000"));

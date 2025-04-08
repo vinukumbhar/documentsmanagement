@@ -188,35 +188,36 @@ import {
 import { MdClose } from "react-icons/md";
 import axios from "axios";
 
-const CreateFolder = ({ open, onClose }) => {
+const CreateFolder = ({
+  open,
+  onClose,
+  fetchUnSealedFolders,
+  fetchAdminPrivateFolders,
+}) => {
   const templateId = "67ea43c004956fca8db1d445";
 
   useEffect(() => {
     console.log(templateId);
   }, [templateId]);
-  const API_KEY = process.env.REACT_APP_FOLDER_URL;
+
+  const [newFolderName, setNewFolderName] = useState("");
 
   const [structFolder, setStructFolder] = useState(null);
+  const [privateStructFolder, setPrivateStructFolder] = useState(null);
+  const [privateFolderPath, setPrivateFolderPath] = useState("");
   const [error, setError] = useState(null);
   const [selectedFolderId, setSelectedFolderId] = useState(null);
-  const [newFolderName, setNewFolderName] = useState("");
   const [newFolderPath, setNewFolderPath] = useState("");
-
-  useEffect(() => {
-    if (templateId) {
-      fetchFolders();
-    }
-  }, [templateId]);
+  const [destinationPath, setDestinationPath] = useState("");
 
   const fetchFolders = async () => {
     try {
-      const url = `http://localhost:8000/allFolders/${templateId}`;
+      const url = `http://127.0.0.1:8000/admin/clientDocs/${templateId}`;
       const response = await axios.get(url);
-
       const addIsOpenProperty = (folders, parentId = null) =>
         folders.map((folder, index) => ({
           ...folder,
-          isOpen: false, // Initially close all folders
+          isOpen: false, // Set to false to close all folders initially
           id: `${parentId ? `${parentId}-` : ""}${index}`,
           contents: folder.contents
             ? addIsOpenProperty(
@@ -237,58 +238,44 @@ const CreateFolder = ({ open, onClose }) => {
       setError(err.message || "An error occurred");
     }
   };
+  const fetchPrivateFolders = async () => {
+    try {
+      const res = await axios.get(
+        `http://127.0.0.1:8000/admin/privateDocs/${templateId}`
+      );
+      const folders = res.data.folders || [];
 
-  // const renderContents = (contents, setContents) => {
-  //   return contents.map((item, index) => {
-  //     if (item.folder) {
-  //       const toggleFolder = () => {
-  //         const updatedContents = contents.map((folder, i) =>
-  //           i === index ? { ...folder, isOpen: !folder.isOpen } : folder
-  //         );
-  //         setContents(updatedContents);
-  //       };
+      const addIsOpen = (items, parentId = "") =>
+        items.map((folder, index) => ({
+          ...folder,
+          isOpen: false,
+          id: `${parentId}${index}`,
+          sealed: false,
+          contents: folder.contents
+            ? addIsOpen(folder.contents, `${parentId}${index}-`)
+            : [],
+        }));
 
-  //       const selectFolder = () => setSelectedFolderId(item.id);
+      setPrivateStructFolder({ ...res.data, folders: addIsOpen(folders) });
+    } catch (err) {
+      setError(err.message || "Error fetching sealed folders.");
+    }
+  };
+  useEffect(() => {
+    if (templateId) {
+      fetchFolders();
+      fetchPrivateFolders();
+    }
+  }, [templateId]);
 
-  //       return (
-  //         <div key={index} style={{ marginLeft: "20px" }}>
-  //           <div
-  //             style={{
-  //               cursor: "pointer",
-  //               display: "flex",
-  //               alignItems: "center",
-  //               backgroundColor:
-  //                 selectedFolderId === item.id ? "#e0f7fa" : "transparent",
-  //             }}
-  //             onClick={selectFolder}
-  //           >
-  //             <div onClick={toggleFolder}>
-  //               {item.isOpen ? "📂" : "📁"}{" "}
-  //               <strong style={{ marginLeft: "5px" }}>{item.folder}</strong>
-  //             </div>
-  //           </div>
-  //           {item.isOpen && item.contents && item.contents.length > 0 && (
-  //             <div>
-  //               {renderContents(item.contents, (newContents) => {
-  //                 const updatedFolders = contents.map((folder, i) =>
-  //                   i === index ? { ...folder, contents: newContents } : folder
-  //                 );
-  //                 setContents(updatedFolders);
-  //               })}
-  //             </div>
-  //           )}
-  //         </div>
-  //       );
-  //     } else if (item.file) {
-  //       return (
-  //         <div key={index} style={{ marginLeft: "40px" }}>
-  //           📄 {item.file}
-  //         </div>
-  //       );
-  //     }
-  //     return null;
-  //   });
-  // };
+  useEffect(() => {
+    if (selectedFolderId) {
+      console.log("The selected folder ID has been updated:", selectedFolderId);
+      handleSelectFolderPath(); // Call your function that depends on the updated state
+    }
+  }, [selectedFolderId]);
+
+  const [selectedType, setSelectedType] = useState(null); // "public" or "private"
 
   const renderContents = (contents, setContents) => {
     return contents.map((item, index) => {
@@ -300,7 +287,11 @@ const CreateFolder = ({ open, onClose }) => {
           setContents(updatedContents);
         };
 
-        const selectFolder = () => setSelectedFolderId(item.id);
+        // const selectFolder = () => setSelectedFolderId(item.id);
+        const selectFolder = () => {
+          setSelectedFolderId(item.id);
+          setSelectedType("public");
+        };
 
         return (
           <div key={index} style={{ marginLeft: "20px", marginBottom: "4px" }}>
@@ -311,8 +302,13 @@ const CreateFolder = ({ open, onClose }) => {
                 alignItems: "center",
                 padding: "6px 8px",
                 borderRadius: "4px",
+                // backgroundColor:
+                //   selectedFolderId === item.id ? "#f0f7ff" : "transparent",
                 backgroundColor:
-                  selectedFolderId === item.id ? "#f0f7ff" : "transparent",
+                  selectedFolderId === item.id && selectedType === "public"
+                    ? "#f0f7ff"
+                    : "transparent",
+
                 transition: "background-color 0.2s ease",
                 "&:hover": {
                   backgroundColor: "#f5f5f5",
@@ -375,82 +371,213 @@ const CreateFolder = ({ open, onClose }) => {
       return null;
     });
   };
-  const createFolderAPI = (newFolderPath) => {
+
+  const renderPrivateContents = (contents, setContents) => {
+    return contents.map((item, index) => {
+      if (item.folder) {
+        const toggleFolder = () => {
+          const updatedContents = contents.map((folder, i) =>
+            i === index ? { ...folder, isOpen: !folder.isOpen } : folder
+          );
+          setContents(updatedContents);
+        };
+
+        // const selectFolder = () => setSelectedFolderId(item.id);
+        const selectFolder = () => {
+          setSelectedFolderId(item.id);
+          setSelectedType("private");
+        };
+
+        return (
+          <div key={index} style={{ marginLeft: "20px", marginBottom: "4px" }}>
+            <div
+              style={{
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                padding: "6px 8px",
+                borderRadius: "4px",
+                backgroundColor:
+                  selectedFolderId === item.id && selectedType === "private"
+                    ? "#f0f7ff"
+                    : "transparent",
+
+                // backgroundColor:
+                //   selectedFolderId === item.id ? "#f0f7ff" : "transparent",
+                transition: "background-color 0.2s ease",
+              }}
+              onClick={selectFolder}
+            >
+              <div
+                onClick={toggleFolder}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  width: "100%",
+                }}
+              >
+                <span style={{ marginRight: "8px" }}>
+                  {item.isOpen ? "📂" : "📁"}
+                </span>
+                <strong
+                  style={{
+                    fontWeight: 500,
+                    color: "#333",
+                    fontSize: "14px",
+                  }}
+                >
+                  {item.folder}
+                </strong>
+              </div>
+            </div>
+            {item.isOpen && item.contents && item.contents.length > 0 && (
+              <div style={{ marginTop: "4px" }}>
+                {renderPrivateContents(item.contents, (newContents) => {
+                  const updatedFolders = contents.map((folder, i) =>
+                    i === index ? { ...folder, contents: newContents } : folder
+                  );
+                  setContents(updatedFolders);
+                })}
+              </div>
+            )}
+          </div>
+        );
+      } else if (item.file) {
+        return (
+          <div
+            key={index}
+            style={{
+              marginLeft: "40px",
+              padding: "4px 8px",
+              fontSize: "14px",
+              color: "#555",
+              display: "flex",
+              alignItems: "center",
+            }}
+          >
+            <span style={{ marginRight: "8px" }}>📄</span>
+            {item.file}
+          </div>
+        );
+      }
+      return null;
+    });
+  };
+  // const createFolderAPI = (newFolderPath) => {
+  //   return axios
+  //     .get(
+  //       `http://localhost:8000/createFolder/?path=uploads/FolderTemplates/${templateId}/${newFolderPath}&foldername=${newFolderName}`
+  //     )
+  //     .then((response) => {
+  //       console.log("API Response:", response.data);
+  //       //fetchFolders();
+  //       //renderContents();
+  //       return response.data;
+  //       //setNewFolderName(""); // Clear input field
+  //     })
+  //     .catch((error) => {
+  //       console.log("API Error:", error);
+  //       throw error;
+  //     });
+  // };
+
+  const createFolderAPI = () => {
+    if (!destinationPath || !newFolderName) {
+      console.log("Missing path or folder name.");
+      return;
+    }
+  
     return axios
       .get(
-        `http://localhost:8000/createFolder/?path=uploads/FolderTemplates/${templateId}/${newFolderPath}&foldername=${newFolderName}`
+        `http://localhost:8000/createFolder/?path=${destinationPath}&foldername=${newFolderName}`
       )
       .then((response) => {
         console.log("API Response:", response.data);
-        //fetchFolders();
-        //renderContents();
+        setNewFolderName(""); // Clear input
+        onClose()
+        fetchUnSealedFolders()
+        fetchAdminPrivateFolders()
+
         return response.data;
-        //setNewFolderName(""); // Clear input field
       })
       .catch((error) => {
         console.log("API Error:", error);
         throw error;
       });
   };
+  
 
-  const handleCreateFolder = () => {
-    if (!newFolderName.trim()) return;
+  const handleSelectFolderPath = () => {
+    const getFolderPath = (folders, parentPath = "") => {
+      for (let folder of folders) {
+        const currentPath = `${parentPath}/${folder.folder}`;
 
-    const addFolderToSelected = (folders, parentPath = "") => {
-      return folders.map((folder) => {
         if (folder.id === selectedFolderId) {
-          const newFolder = {
-            folder: newFolderName.trim(),
-            isOpen: false, // New folder initially closed
-            id: `${folder.id}-${folder.contents.length}`,
-            contents: [],
-          };
-
-          // Construct the full path to the new folder
-          const newPath = `${parentPath}/${folder.folder}`;
-
-          setNewFolderPath(newPath); // Update state
-
-          // Add the new folder to the contents of the parent folder
-          const updatedFolder = {
-            ...folder,
-            contents: [...folder.contents, newFolder],
-          };
-
-          return updatedFolder;
+          return currentPath;
         }
 
-        return folder.contents
-          ? {
-              ...folder,
-              contents: addFolderToSelected(
-                folder.contents,
-                `${parentPath ? `${parentPath}/` : ""}${folder.folder}`
-              ),
-            }
-          : folder;
-      });
+        if (folder.contents) {
+          const nestedPath = getFolderPath(folder.contents, currentPath);
+          if (nestedPath) {
+            return nestedPath;
+          }
+        }
+      }
+      return null;
     };
 
-    const updatedFolderStructure = addFolderToSelected(structFolder.folders);
+    if (!selectedFolderId || !selectedType) {
+      console.log("No folder selected or type not defined.");
+      return;
+    }
 
-    setStructFolder((prev) => ({
-      ...prev,
-      folders: updatedFolderStructure,
-    }));
+    // if (selectedType === "public" && structFolder?.folders) {
+    //   const selectedPath = getFolderPath(structFolder.folders);
+    //   setNewFolderPath(selectedPath);
+    //   console.log("Selected public path:", selectedPath);
+    // }
+
+    if (selectedType === "public" && structFolder?.folders) {
+      let selectedPath = getFolderPath(structFolder.folders);
+
+      // Append /unsealed if the selected folder is "Client Uploaded Documents"
+      // if (selectedPath === "/Client Uploaded Documents") {
+      //   selectedPath += "/unsealed";
+      // }
+      // Inject "unsealed" if path starts with "/Client Uploaded Documents"
+      if (selectedPath?.startsWith("/Client Uploaded Documents")) {
+        selectedPath = selectedPath.replace(
+          "/Client Uploaded Documents",
+          "/Client Uploaded Documents/unsealed"
+        );
+      }
+
+      setNewFolderPath(selectedPath);
+      console.log("Selected public path:", selectedPath);
+    }
+
+    if (selectedType === "private" && privateStructFolder?.folders) {
+      const selectedPath = getFolderPath(privateStructFolder.folders);
+      setPrivateFolderPath(selectedPath);
+      console.log("Selected private path:", selectedPath);
+    }
   };
 
   useEffect(() => {
-    if (newFolderPath) {
-      createFolderAPI(newFolderPath)
-        .then((data) => {
-          console.log("Folder created successfully:", data);
-        })
-        .catch((error) => {
-          console.log("Error creating folder:", error);
-        });
+    if (newFolderPath && selectedType === "public") {
+      setDestinationPath(
+        `uploads/FolderTemplates/${templateId}/${newFolderPath}`
+      );
     }
-  }, [newFolderPath]);
+  }, [newFolderPath, selectedType]);
+
+  useEffect(() => {
+    if (privateFolderPath && selectedType === "private") {
+      setDestinationPath(
+        `uploads/FolderTemplates/${templateId}/${privateFolderPath}`
+      );
+    }
+  }, [privateFolderPath, selectedType]);
 
   if (error) {
     return <div>Error: {error}</div>;
@@ -463,7 +590,18 @@ const CreateFolder = ({ open, onClose }) => {
   return (
     <Box>
       <Drawer anchor="right" open={open} onClose={onClose}>
-        {/* <Box sx={{ width: 600, padding: 2 }}>
+        
+        <Box
+          sx={{
+            backgroundColor: "#fff",
+            borderRadius: "8px",
+
+            padding: 2,
+            width: 600,
+            fontFamily:
+              "'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif",
+          }}
+        >
           <Box
             sx={{
               display: "flex",
@@ -471,7 +609,7 @@ const CreateFolder = ({ open, onClose }) => {
               alignItems: "center",
             }}
           >
-            <Typography variant="h6">Create folder</Typography>
+            <Typography variant="h6">Create folder normal</Typography>
             <IconButton onClick={onClose}>
               <MdClose />
             </IconButton>
@@ -487,60 +625,24 @@ const CreateFolder = ({ open, onClose }) => {
           <Button
             variant="contained"
             sx={{ mt: 2 }}
-            onClick={handleCreateFolder}
+            onClick={createFolderAPI}
           >
             Create Folder
           </Button>
-          {renderContents(structFolder.folders, (newFolders) =>
-            setStructFolder({ ...structFolder, folders: newFolders })
-          )}
-        </Box> */}
-         <Box
-      sx={{
-        backgroundColor: "#fff",
-        borderRadius: "8px",
 
-        padding: 2,
-        width: 600,
-        fontFamily: "'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif",
-      }}
-    >
-      
-      <Box
-            sx={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
-          >
-            <Typography variant="h6">Create folder</Typography>
-            <IconButton onClick={onClose}>
-              <MdClose />
-            </IconButton>
+          <Box sx={{ maxHeight: "500px", overflowY: "auto" }}>
+            {renderContents(structFolder.folders, (newFolders) =>
+              setStructFolder({ ...structFolder, folders: newFolders })
+            )}
+
+            {renderPrivateContents(privateStructFolder.folders, (newFolders) =>
+              setPrivateStructFolder({
+                ...privateStructFolder,
+                folders: newFolders,
+              })
+            )}
           </Box>
-          <TextField
-            fullWidth
-            size="small"
-            variant="outlined"
-            placeholder="Folder Name"
-            value={newFolderName}
-            onChange={(e) => setNewFolderName(e.target.value)}
-          />
-          <Button
-            variant="contained"
-            sx={{ mt: 2 }}
-            onClick={handleCreateFolder}
-          >
-            Create Folder
-          </Button>
-     
-      <Box sx={{ maxHeight: "500px", overflowY: "auto" }}>
-        {renderContents(structFolder.folders, (newFolders) =>
-          setStructFolder({ ...structFolder, folders: newFolders })
-        )}
-      </Box>
-
-    </Box>
+        </Box>
       </Drawer>
     </Box>
   );

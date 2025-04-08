@@ -1,8 +1,8 @@
 
 import React from 'react'
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import AdminDocs from "./AdminDocs"
-import ClientDocs from './ClientDocs';
+import AdminDocs from "./AdminPortal/AdminDocs"
+import ClientDocs from './ClientPortal/ClientDocs';
 import Test from './Test'
 const App = () => {
   return (

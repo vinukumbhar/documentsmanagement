@@ -9,6 +9,7 @@ import {
   Input,
   Menu,
   MenuItem,
+  Divider,
 } from "@mui/material";
 import { HiDocumentArrowUp } from "react-icons/hi2";
 import { FaRegFolderClosed } from "react-icons/fa6";
@@ -63,9 +64,10 @@ const App = () => {
   const [structFolder, setStructFolder] = useState(null);
   const [sealedStructFolder, setSealedStructFolder] = useState(null);
   const [privateStructFolder, setPrivateStructFolder] = useState(null);
+  const [firmDocsFolder, setFirmDocsFolder] = useState(null);
   const [error, setError] = useState(null);
   const [selectedFolderId, setSelectedFolderId] = useState(null);
-  const [loadingContent, setLoadingContent] = useState(false);
+ const [combinedFolderStructure,setCombinedFolderStructure]=useState(null)
 
   const templateId = "67ea43c004956fca8db1d445";
 
@@ -74,6 +76,7 @@ const App = () => {
       fetchUnSealedFolders();
       fetchSealedFolders();
       fetchPrivateFolders();
+      fetchFrimDocsFolders()
     }
   }, [templateId]);
 
@@ -125,6 +128,49 @@ const App = () => {
     }
   };
 
+  useEffect(() => {
+    fetchBothFolders();
+  }, [templateId]);
+  
+  const fetchBothFolders = async () => {
+    try {
+      const [sealedRes, unsealedRes] = await Promise.all([
+        axios.get(`http://localhost:8000/admin/sealedFolders/${templateId}`),
+        axios.get(`http://localhost:8000/admin/unsealed/${templateId}`),
+      ]);
+  
+      const addIsOpen = (items, parentId = "", sealed = false) =>
+        items.map((folder, index) => ({
+          ...folder,
+          isOpen: false,
+          id: `${parentId}${index}`,
+          sealed,
+          contents: folder.contents
+            ? addIsOpen(folder.contents, `${parentId}${index}-`, sealed)
+            : [],
+        }));
+  
+      const sealedFolders = addIsOpen(sealedRes.data.folders || [], "", true);
+      const unsealedFolders = addIsOpen(unsealedRes.data.folders || [], "", false);
+  
+      // Combine into a single parent folder
+      const combinedFolders = [
+        {
+          folder: "Client Uploaded Documents",
+          isOpen: true,
+          id: "client-root",
+          contents: [...sealedFolders, ...unsealedFolders],
+        },
+      ];
+  
+      // Set to a single state
+      setCombinedFolderStructure(combinedFolders); // <- new unified state
+      console.log("jaanvi patil",combinedFolders)
+    } catch (err) {
+      setError(err.message || "Error fetching folders.");
+    }
+  };
+  
   const fetchPrivateFolders = async () => {
     try {
       const res = await axios.get(
@@ -148,6 +194,29 @@ const App = () => {
       setError(err.message || "Error fetching sealed folders.");
     }
   };
+  const fetchFrimDocsFolders = async () => {
+    try {
+      const res = await axios.get(
+        `http://127.0.0.1:8000/admin/firmDocs/${templateId}`
+      );
+      const folders = res.data.folders || [];
+
+      const addIsOpen = (items, parentId = "") =>
+        items.map((folder, index) => ({
+          ...folder,
+          isOpen: false,
+          id: `${parentId}${index}`,
+          sealed: false,
+          contents: folder.contents
+            ? addIsOpen(folder.contents, `${parentId}${index}-`)
+            : [],
+        }));
+
+        setFirmDocsFolder({ ...res.data, folders: addIsOpen(folders) });
+    } catch (err) {
+      setError(err.message || "Error fetching sealed folders.");
+    }
+  };
   const SealedChip = ({ sealed }) => {
     if (sealed == null) return null;
     return (
@@ -165,41 +234,7 @@ const App = () => {
       </span>
     );
   };
-  const [destinationPath, setDestinationPath] = useState("");
-  const fetchClientUploadsContent = async () => {
-    try {
-      setLoadingContent(true);
-      const [sealed, unsealed] = await Promise.all([
-        axios.get(`http://localhost:8000/getSealedContent/${templateId}`),
-        axios.get(`http://localhost:8000/getUnsealedContent/${templateId}`),
-      ]);
-
-      const tagSource = (items, source, parentId = "") =>
-        items.map((item, index) => {
-          const id = `${parentId}${index}`;
-          if (item.type === "folder") {
-            return {
-              folder: item.name,
-              isOpen: false,
-              id,
-              source,
-              contents: tagSource(item.contents || [], source, `${id}-`),
-            };
-          }
-          return { file: item.name, id, source };
-        });
-
-      return [
-        ...tagSource(sealed.data.contents || [], "sealed"),
-        ...tagSource(unsealed.data.contents || [], "unsealed"),
-      ];
-    } catch (err) {
-      console.error(err);
-      return [];
-    } finally {
-      setLoadingContent(false);
-    }
-  };
+ 
 
   const handleMenuClick = (e, item) => {
     e.stopPropagation();
@@ -216,10 +251,6 @@ const App = () => {
     console.log(`${action} clicked`, contextItem);
     handleMenuClose();
   };
-  
-  
-  
-
   const renderPrivateFolderContents = (contents, setContents) =>
     contents.map((item, index) => {
       if (item.folder) {
@@ -288,135 +319,427 @@ const App = () => {
       }
       return null;
     });
-
-  const renderContents = (contents, setContents) =>
-    contents.map((item, index) => {
-      if (item.folder) {
-        const toggleFolder = () => {
-          const updated = contents.map((f, i) =>
-            i === index ? { ...f, isOpen: !f.isOpen } : f
-          );
-          setContents(updated);
-        };
+    const renderFirmDocsFolderContents = (contents, setContents) =>
+      contents.map((item, index) => {
+        if (item.folder) {
+          const toggleFolder = () => {
+            const updated = contents.map((f, i) =>
+              i === index ? { ...f, isOpen: !f.isOpen } : f
+            );
+            setContents(updated);
+          };
   
-        const selectFolder = () => setSelectedFolderId(item.id);
-  console.log("janavi",selectedFolderId)
-        return (
-          <div key={index} style={{ marginLeft: "20px", marginBottom: "4px" }}>
+          const selectFolder = () => setSelectedFolderId(item.id);
+  
+          return (
+            <div key={index} style={{ marginLeft: "20px", marginBottom: "4px" }}>
+              <div
+                style={{
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  padding: "6px 8px",
+                  borderRadius: "4px",
+                }}
+                onClick={selectFolder}
+              >
+                <div
+                  onClick={toggleFolder}
+                  style={{ display: "flex", alignItems: "center", width: "100%" }}
+                >
+                  <span style={{ marginRight: "8px" }}>
+                    {item.isOpen ? "📂" : "📁"}
+                  </span>
+                  <strong style={{ fontWeight: 500 }}>{item.folder}</strong>
+                  {/* <SealedChip sealed={item.sealed} /> */}
+                </div>
+              </div>
+              {item.isOpen && item.contents?.length > 0 && (
+                <div style={{ marginTop: "4px" }}>
+                  {renderFirmDocsFolderContents(item.contents, (newContents) => {
+                    const updated = contents.map((f, i) =>
+                      i === index ? { ...f, contents: newContents } : f
+                    );
+                    setContents(updated);
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        } else if (item.file) {
+          return (
             <div
+              key={index}
               style={{
-                cursor: "pointer",
+                marginLeft: "40px",
+                padding: "4px 8px",
+                fontSize: "14px",
+                color: "#555",
                 display: "flex",
                 alignItems: "center",
-                padding: "6px 8px",
-                borderRadius: "4px",
-                '&:hover': {
-                  backgroundColor: '#f5f5f5',
-                },
               }}
-              onClick={selectFolder}
             >
-              <div
-                onClick={toggleFolder}
-                style={{ display: "flex", alignItems: "center", flexGrow: 1 }}
-              >
-                <span style={{ marginRight: "8px" }}>
-                  {item.isOpen ? "📂" : "📁"}
-                </span>
-                <strong style={{ fontWeight: 500 }}>{item.folder}</strong>
-                <SealedChip sealed={item.sealed} />
+              <span style={{ marginRight: "8px" }}>📄</span>
+              <span style={{ fontWeight: 500 }}>{item.file}</span>
+              {/* <SealedChip sealed={item.sealed} /> */}
+            </div>
+          );
+        }
+        return null;
+      });
+      const renderContents = (contents, setContents) => {
+        if (!Array.isArray(contents)) return null; // Guard clause
+      
+        return contents.map((item, index) => {
+          if (item.folder) {
+            const toggleFolder = () => {
+              const updated = contents.map((f, i) =>
+                i === index ? { ...f, isOpen: !f.isOpen } : f
+              );
+              setContents(updated);
+            };
+      
+            const selectFolder = () => setSelectedFolderId(item.id);
+            console.log("janavi", selectedFolderId);
+      
+            return (
+              <div key={index} style={{ marginLeft: "20px", marginBottom: "4px" }}>
+                <div
+                  style={{
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    padding: "6px 8px",
+                    borderRadius: "4px",
+                    backgroundColor: selectedFolderId === item.id ? "#e0f7fa" : "transparent",
+                  }}
+                  onClick={selectFolder}
+                >
+                  <div
+                    onClick={toggleFolder}
+                    style={{ display: "flex", alignItems: "center", flexGrow: 1 }}
+                  >
+                    <span style={{ marginRight: "8px" }}>
+                      {item.isOpen ? "📂" : "📁"}
+                    </span>
+                    <strong style={{ fontWeight: 500 }}>{item.folder}</strong>
+                    <SealedChip sealed={item.sealed} />
+                  </div>
+                  <IconButton
+                    size="small"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleMenuClick(e, item);
+                    }}
+                  >
+                    <BsThreeDotsVertical />
+                  </IconButton>
+                </div>
+                {item.isOpen && item.contents?.length > 0 && (
+                  <div style={{ marginTop: "4px" }}>
+                    {renderContents(item.contents, (newContents) => {
+                      const updated = contents.map((f, i) =>
+                        i === index ? { ...f, contents: newContents } : f
+                      );
+                      setContents(updated);
+                    })}
+                  </div>
+                )}
               </div>
-              <IconButton
-                size="small"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleMenuClick(e, item);
+            );
+          } else if (item.file) {
+            // Construct the file URL
+            const fileUrl = item.filePath || `http://localhost:8000/uploads/${item.file}`;
+      
+            return (
+              <div
+                key={index}
+                style={{
+                  marginLeft: "40px",
+                  padding: "4px 8px",
+                  fontSize: "14px",
+                  color: "#555",
+                  display: "flex",
+                  alignItems: "center",
+                  cursor: "pointer",
                 }}
               >
-                <BsThreeDotsVertical />
-              </IconButton>
-            </div>
-            {item.isOpen && item.contents?.length > 0 && (
-              <div style={{ marginTop: "4px" }}>
-                {renderContents(item.contents, (newContents) => {
-                  const updated = contents.map((f, i) =>
-                    i === index ? { ...f, contents: newContents } : f
-                  );
-                  setContents(updated);
-                })}
+                <span style={{ marginRight: "8px" }}>📄</span>
+                <a
+                  href={fileUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    fontWeight: 500,
+                    flexGrow: 1,
+                    textDecoration: "none",
+                    color: "#555",
+                  }}
+                >
+                  {item.file}
+                </a>
+                <SealedChip sealed={item.sealed} />
+                <IconButton
+                  size="small"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleMenuClick(e, item);
+                  }}
+                >
+                  <BsThreeDotsVertical />
+                </IconButton>
               </div>
-            )}
-          </div>
-        );
-      } else if (item.file) {
-        return (
-          <div
-            key={index}
-            style={{
-              marginLeft: "40px",
-              padding: "4px 8px",
-              fontSize: "14px",
-              color: "#555",
-              display: "flex",
-              alignItems: "center",
-              '&:hover': {
-                backgroundColor: '#f5f5f5',
-              },
-            }}
-          >
-            <span style={{ marginRight: "8px" }}>📄</span>
-            <span style={{ fontWeight: 500, flexGrow: 1 }}>{item.file}</span>
-            <SealedChip sealed={item.sealed} />
-            <IconButton
-              size="small"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleMenuClick(e, item);
-              }}
-            >
-              <BsThreeDotsVertical />
-            </IconButton>
-          </div>
-        );
-      }
-      return null;
-    });
+            );
+          }
+      
+          return null;
+        });
+      };
+      
+      // const renderContents = (contents, setContents) => {
+      //   if (!Array.isArray(contents)) return null; // ✅ Guard clause to avoid .map on null
+      
+      //   return contents.map((item, index) => {
+      //     if (item.folder) {
+      //       const toggleFolder = () => {
+      //         const updated = contents.map((f, i) =>
+      //           i === index ? { ...f, isOpen: !f.isOpen } : f
+      //         );
+      //         setContents(updated);
+      //       };
+      
+      //       const selectFolder = () => setSelectedFolderId(item.id);
+      //       console.log("janavi", selectedFolderId);
+      
+      //       return (
+      //         <div key={index} style={{ marginLeft: "20px", marginBottom: "4px" }}>
+      //           <div
+      //             style={{
+      //               cursor: "pointer",
+      //               display: "flex",
+      //               alignItems: "center",
+      //               padding: "6px 8px",
+      //               borderRadius: "4px",
+      //               '&:hover': {
+      //                 backgroundColor: '#f5f5f5',
+      //               },
+      //             }}
+      //             onClick={selectFolder}
+      //           >
+      //             <div
+      //               onClick={toggleFolder}
+      //               style={{ display: "flex", alignItems: "center", flexGrow: 1 }}
+      //             >
+      //               <span style={{ marginRight: "8px" }}>
+      //                 {item.isOpen ? "📂" : "📁"}
+      //               </span>
+      //               <strong style={{ fontWeight: 500 }}>{item.folder}</strong>
+      //               <SealedChip sealed={item.sealed} />
+      //             </div>
+      //             <IconButton
+      //               size="small"
+      //               onClick={(e) => {
+      //                 e.stopPropagation();
+      //                 handleMenuClick(e, item);
+      //               }}
+      //             >
+      //               <BsThreeDotsVertical />
+      //             </IconButton>
+      //           </div>
+      //           {item.isOpen && item.contents?.length > 0 && (
+      //             <div style={{ marginTop: "4px" }}>
+      //               {renderContents(item.contents, (newContents) => {
+      //                 const updated = contents.map((f, i) =>
+      //                   i === index ? { ...f, contents: newContents } : f
+      //                 );
+      //                 setContents(updated);
+      //               })}
+      //             </div>
+      //           )}
+      //         </div>
+      //       );
+      //     } else if (item.file) {
+      //       return (
+      //         <div
+      //           key={index}
+      //           style={{
+      //             marginLeft: "40px",
+      //             padding: "4px 8px",
+      //             fontSize: "14px",
+      //             color: "#555",
+      //             display: "flex",
+      //             alignItems: "center",
+      //             '&:hover': {
+      //               backgroundColor: '#f5f5f5',
+      //             },
+      //           }}
+      //         >
+      //           <span style={{ marginRight: "8px" }}>📄</span>
+      //           <span style={{ fontWeight: 500, flexGrow: 1 }}>{item.file}</span>
+      //           <SealedChip sealed={item.sealed} />
+      //           <IconButton
+      //             size="small"
+      //             onClick={(e) => {
+      //               e.stopPropagation();
+      //               handleMenuClick(e, item);
+      //             }}
+      //           >
+      //             <BsThreeDotsVertical />
+      //           </IconButton>
+      //         </div>
+      //       );
+      //     }
+      
+      //     return null;
+      //   });
+      // };
+      
+  // const renderContents = (contents, setContents) =>
+  //   contents.map((item, index) => {
+  //     if (item.folder) {
+  //       const toggleFolder = () => {
+  //         const updated = contents.map((f, i) =>
+  //           i === index ? { ...f, isOpen: !f.isOpen } : f
+  //         );
+  //         setContents(updated);
+  //       };
+  
+  //       const selectFolder = () => setSelectedFolderId(item.id);
+  // console.log("janavi",selectedFolderId)
+  //       return (
+  //         <div key={index} style={{ marginLeft: "20px", marginBottom: "4px" }}>
+  //           <div
+  //             style={{
+  //               cursor: "pointer",
+  //               display: "flex",
+  //               alignItems: "center",
+  //               padding: "6px 8px",
+  //               borderRadius: "4px",
+  //               '&:hover': {
+  //                 backgroundColor: '#f5f5f5',
+  //               },
+  //             }}
+  //             onClick={selectFolder}
+  //           >
+  //             <div
+  //               onClick={toggleFolder}
+  //               style={{ display: "flex", alignItems: "center", flexGrow: 1 }}
+  //             >
+  //               <span style={{ marginRight: "8px" }}>
+  //                 {item.isOpen ? "📂" : "📁"}
+  //               </span>
+  //               <strong style={{ fontWeight: 500 }}>{item.folder}</strong>
+  //               <SealedChip sealed={item.sealed} />
+  //             </div>
+  //             <IconButton
+  //               size="small"
+  //               onClick={(e) => {
+  //                 e.stopPropagation();
+  //                 handleMenuClick(e, item);
+  //               }}
+  //             >
+  //               <BsThreeDotsVertical />
+  //             </IconButton>
+  //           </div>
+  //           {item.isOpen && item.contents?.length > 0 && (
+  //             <div style={{ marginTop: "4px" }}>
+  //               {renderContents(item.contents, (newContents) => {
+  //                 const updated = contents.map((f, i) =>
+  //                   i === index ? { ...f, contents: newContents } : f
+  //                 );
+  //                 setContents(updated);
+  //               })}
+  //             </div>
+  //           )}
+  //         </div>
+  //       );
+  //     } else if (item.file) {
+  //       return (
+  //         <div
+  //           key={index}
+  //           style={{
+  //             marginLeft: "40px",
+  //             padding: "4px 8px",
+  //             fontSize: "14px",
+  //             color: "#555",
+  //             display: "flex",
+  //             alignItems: "center",
+  //             '&:hover': {
+  //               backgroundColor: '#f5f5f5',
+  //             },
+  //           }}
+  //         >
+  //           <span style={{ marginRight: "8px" }}>📄</span>
+  //           <span style={{ fontWeight: 500, flexGrow: 1 }}>{item.file}</span>
+  //           <SealedChip sealed={item.sealed} />
+  //           <IconButton
+  //             size="small"
+  //             onClick={(e) => {
+  //               e.stopPropagation();
+  //               handleMenuClick(e, item);
+  //             }}
+  //           >
+  //             <BsThreeDotsVertical />
+  //           </IconButton>
+  //         </div>
+  //       );
+  //     }
+  //     return null;
+  //   });
   const [clientFiles, setClientFiles] = useState([]);
  
-  useEffect(() => {
-    const fetchFileDetails = async () => {
-      try {
-        const response = await axios.get("http://127.0.0.1:8000/api/files");
-        if (response.data.success) {
+  // useEffect(() => {
+  //   const fetchFileDetails = async () => {
+  //     try {
+  //       const response = await axios.get("http://127.0.0.1:8000/api/files");
+  //       if (response.data.success) {
          
-          const basePath = "Firm Docs Shared With Client";
-          const filtered = response.data.data
-            .filter((file) => file.filePath.includes(basePath))
-            .map((file) => {
-              const pathParts = file.filePath.split(basePath);
-              return {
-                ...file,
-                filePath: basePath + (pathParts[1] || ""),
-              };
-            });
+  //         const basePath = "Firm Docs Shared With Client";
+  //         const filtered = response.data.data
+  //           .filter((file) => file.filePath.includes(basePath))
+  //           .map((file) => {
+  //             const pathParts = file.filePath.split(basePath);
+  //             return {
+  //               ...file,
+  //               filePath: basePath + (pathParts[1] || ""),
+  //             };
+  //           });
 
-          setClientFiles(filtered);
-          console.log(
-            "Filtered Files Under Firm Docs Shared With Client:",
-            filtered
-          );
-        } else {
-          setError("Failed to fetch files");
-        }
-      } catch (error) {
-        setError(error.message);
+  //         setClientFiles(filtered);
+  //         console.log(
+  //           "Filtered Files Under Firm Docs Shared With Client:",
+  //           filtered
+  //         );
+  //       } else {
+  //         setError("Failed to fetch files");
+  //       }
+  //     } catch (error) {
+  //       setError(error.message);
+  //     }
+  //   };
+  //   fetchFileDetails();
+  // }, []);
+  const [data, setData] = useState({ folder: "", contents: [] });
+  const [selectedPath, setSelectedPath] = useState("");
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const response = await axios.get(
+        "http://127.0.0.1:8000/admin/firmDocs/67ea43c004956fca8db1d445"
+      );
+      if (response.data && response.data.folder) {
+        setData({
+          folder: response.data.folder,
+          contents: response.data.contents,
+        });
       }
     };
-    fetchFileDetails();
+
+    fetchData();
   }, []);
 
   if (error) return <div>Error: {error}</div>;
-  if (!structFolder || !sealedStructFolder) return <div>Loading...</div>;
+  if (!combinedFolderStructure || !privateStructFolder) return <div>Loading...</div>;
 
   return (
     <>
@@ -495,17 +818,21 @@ const App = () => {
         </Box>
       </Box>
 
-      <Box mt={3}>
-        <Typography variant="h6">Client Uploaded Documents</Typography>
-        {renderContents(sealedStructFolder.folders, (newFolders) =>
+      <Box >
+       
+        {/* {renderContents(sealedStructFolder.folders, (newFolders) =>
           setSealedStructFolder({ ...sealedStructFolder, folders: newFolders })
         )}
         {renderContents(structFolder.folders, (newFolders) =>
           setStructFolder({ ...structFolder, folders: newFolders })
-        )}
+        )} */}
+        {renderContents(combinedFolderStructure, (newStructure) =>
+  setCombinedFolderStructure(newStructure)
+)}
+
       </Box>
       <Box>
-        <Typography variant="h6">Private</Typography>
+        {/* <Typography variant="h6">Private</Typography> */}
 
         {renderPrivateFolderContents(privateStructFolder.folders, (newFolders) =>
           setPrivateStructFolder({
@@ -514,7 +841,10 @@ const App = () => {
           })
         )}
       </Box>
+{/* <Divider /> */}
+<Box sx={{mt:2, borderBottom:'2px solid grey'}}>
 
+</Box>
       <Box>
         <Box
           sx={{
@@ -539,7 +869,7 @@ const App = () => {
                 htmlFor="firmDocFileInput"
                 sx={{ cursor: "pointer" }}
               >
-                Upload in firm
+                Upload Document in firm
               </Typography>
               <Input
                 type="file"
@@ -566,12 +896,15 @@ const App = () => {
           </Box>
         </Box>
         <Box>
-          <Typography variant="h6">Firm Docs Shared With Client</Typography>
+          {/* <Typography variant="h6">Firm Docs Shared With Client</Typography> */}
+         
           <DocumentManager
-            files={clientFiles}
-            onPathSelect={setDestinationPath}
-            selectedPath={destinationPath}
-          />
+        folderName={data.folder}
+        contents={data.contents}
+        onPathSelect={(path) => setSelectedPath(path)}
+        selectedPath={selectedPath}
+      />
+          
         </Box>
       </Box>
 
@@ -620,6 +953,8 @@ const App = () => {
         setFolderName={setFolderName}
         folderName={folderName}
         onClose={() => setIsUploadFolderFormOpen(false)}
+        fetchUnSealedFolders={fetchUnSealedFolders}
+        fetchAdminPrivateFolders={fetchPrivateFolders}
       />
     </>
   );

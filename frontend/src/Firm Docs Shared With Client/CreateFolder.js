@@ -470,6 +470,8 @@ const CreateFolder = ({ open, onClose }) => {
         console.log("✅ Folder created:", data);
         alert("Folder created successfully!");
         setNewFolderName(""); // clear input
+        onClose()
+        
         // Optional: refresh folder list
       } else {
         console.error("❌ Failed to create folder:", data);
@@ -480,7 +482,31 @@ const CreateFolder = ({ open, onClose }) => {
       alert("Something went wrong!");
     }
   };
-  
+  const [data, setData] = useState({ folder: "", contents: [] });
+  const [selectedPath, setSelectedPath] = useState("");
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const response = await axios.get(
+        "http://127.0.0.1:8000/admin/firmDocs/67ea43c004956fca8db1d445"
+      );
+      if (response.data && response.data.folder) {
+        setData({
+          folder: response.data.folder,
+          contents: response.data.contents,
+        });
+      }
+    };
+
+    fetchData();
+  }, []);
+  // const [selectedPath, setSelectedPath] = useState("");
+
+const handlePathSelect = (path) => {
+  console.log("Selected path:", path); // for debugging
+  setSelectedPath(path);
+  setDestinationPath(path); 
+};
   if (error) {
     return <div>Error: {error}</div>;
   }
@@ -525,11 +551,12 @@ const CreateFolder = ({ open, onClose }) => {
           </Button>
 
           <Box sx={{ maxHeight: "500px", overflowY: "auto" }}>
-            <DocumentManager
-              files={clientFiles}
-              onPathSelect={setDestinationPath}
-              selectedPath={destinationPath}
-            />
+          <DocumentManager
+        folderName={data.folder}
+        contents={data.contents}
+        onPathSelect={handlePathSelect}
+        selectedPath={selectedPath}
+      />
           </Box>
         </Box>
       </Drawer>

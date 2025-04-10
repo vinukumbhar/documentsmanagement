@@ -59,7 +59,7 @@ const App = () => {
     if (isDrawerOpen) openDrawer();
   }, [isDrawerOpen]);
 
-  const [anchorEl, setAnchorEl] = useState(null);
+  // const [anchorEl, setAnchorEl] = useState(null);
   const [contextItem, setContextItem] = useState(null);
   const [structFolder, setStructFolder] = useState(null);
   const [sealedStructFolder, setSealedStructFolder] = useState(null);
@@ -157,7 +157,7 @@ const App = () => {
       const combinedFolders = [
         {
           folder: "Client Uploaded Documents",
-          isOpen: true,
+          isOpen: false,
           id: "client-root",
           contents: [...sealedFolders, ...unsealedFolders],
         },
@@ -169,6 +169,256 @@ const App = () => {
     } catch (err) {
       setError(err.message || "Error fetching folders.");
     }
+  };
+  const toggleFolder = (folderId, folders) => {
+    return folders.map((item) => {
+      if (item.id === folderId) {
+        return { ...item, isOpen: !item.isOpen };
+      } else if (item.contents?.length) {
+        return { ...item, contents: toggleFolder(folderId, item.contents) };
+      }
+      return item;
+    });
+  };
+
+  const handleToggle = (id) => {
+    setCombinedFolderStructure((prev) => toggleFolder(id, prev));
+  };
+
+  // const renderTree = (items) => {
+  //   return items.map((item) => {
+  //     if (item.folder) {
+  //       return (
+  //         <div key={item.id} style={{ paddingLeft: "20px" }}>
+  //           <div
+  //             style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: "8px" }}
+  //             onClick={() => handleToggle(item.id)}
+  //           >
+  //             <span>{item.isOpen ? "📂" : "📁"}</span>
+  //             <span>{item.folder}</span>
+  //             {item.sealed && <span style={{ backgroundColor: "#d50000", color: "#fff", padding: "2px 6px", borderRadius: "8px", fontSize: "12px" }}>Sealed</span>}
+  //           </div>
+  //           {item.isOpen && item.contents?.length > 0 && (
+  //             <div>{renderTree(item.contents)}</div>
+  //           )}
+  //         </div>
+  //       );
+  //     } else {
+  //       return (
+  //         <div key={item.id} style={{ paddingLeft: "40px", display: "flex", alignItems: "center", gap: "8px" }}>
+  //           <span>📄</span>
+  //           <span>{item.file}</span>
+  //           {item.sealed && <span style={{ backgroundColor: "#d50000", color: "#fff", padding: "2px 6px", borderRadius: "8px", fontSize: "12px" }}>Sealed</span>}
+  //         </div>
+  //       );
+  //     }
+  //   });
+  // };
+ 
+ 
+ 
+  const [loading, setLoading] = useState(false);
+  // const handleAction = async (action, item) => {
+  //   console.log(`Action: ${action} on`, item);
+  //   setActiveMenu(null); // close menu after action
+  
+  //   if (action === 'seal' || action === 'unseal') {
+  //     try {
+  //       setLoading(true);
+        
+  //       // Extract the folder ID from the item's path
+  //       const pathParts = item.path.split('/');
+  //       const folderId = pathParts[2]; // Assuming format: uploads/FolderTemplates/{id}/...
+  
+  //       // Calculate the relative path within the sealed/unsealed directory
+  //       const basePath = `uploads/FolderTemplates/${folderId}/Client Uploaded Documents`;
+  //       const relativePath = item.path.replace(`${basePath}/${action === 'seal' ? 'unsealed' : 'sealed'}/`, '');
+  
+  //       // Call the API to move the item
+  //       await axios.post('http://localhost:8000/admin/moveBetweenSealedUnsealed', {
+  //         id: folderId,
+  //         itemPath: relativePath,
+  //         direction: action === 'seal' ? 'toSealed' : 'toUnsealed'
+  //       });
+  
+  //       // Refresh the data
+  //       await fetchBothFolders();
+        
+  //       // Show success message
+  //       alert(`Item ${action === 'seal' ? 'sealed' : 'unsealed'} successfully`);
+  //     } catch (error) {
+  //       console.error('Error moving item:', error);
+  //       alert(`Failed to ${action} item: ${error.response?.data?.error || error.message}`);
+  //     } finally {
+  //       setLoading(false);
+  //     }
+  //   } else {
+  //     // Handle other actions...
+  //   }
+  // };
+ 
+const handleAction = async (action, item) => {
+  console.log(`Action: ${action} on`, item);
+  setActiveMenu(null); // Close the action menu
+
+  if (action === 'seal' || action === 'unseal') {
+    try {
+      setLoading(true);
+
+      // Extract folder ID from item.path
+      const pathParts = item.path.split('/');
+      const folderId = pathParts[2]; // uploads/FolderTemplates/{id}/...
+
+      // Compute base path
+      const basePath = `uploads/FolderTemplates/${folderId}/Client Uploaded Documents`;
+
+      // Get relative path inside unsealed/sealed
+      const currentDir = action === 'seal' ? 'unsealed' : 'sealed';
+      const relativePath = item.path.replace(`${basePath}/${currentDir}/`, '');
+
+      // Call backend to move the item
+      await axios.post('http://localhost:8000/admin/moveBetweenSealedUnsealed', {
+        id: folderId,
+        itemPath: relativePath,
+        direction: action === 'seal' ? 'toSealed' : 'toUnsealed',
+      });
+
+      // Refresh folders
+      await fetchBothFolders();
+
+      // Notify success
+      alert(`Item ${action === 'seal' ? 'sealed' : 'unsealed'} successfully`);
+    } catch (error) {
+      console.error('Error moving item:', error);
+      alert(`Failed to ${action} item: ${error.response?.data?.error || error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  } else {
+    // Other actions if needed
+  }
+};
+
+
+
+
+
+
+
+
+  
+  // const handleAction = (action, item) => {
+  //   console.log(`Action: ${action} on`, item);
+  //   setActiveMenu(null); // close menu after action
+  // };
+  const [anchorEl, setAnchorEl] = useState(null);
+const [selectedItem, setSelectedItem] = useState(null);
+const [activeMenu, setActiveMenu] = useState(null);
+
+const handleMenuOpen = (event, item) => {
+  setAnchorEl(event.currentTarget);
+  setSelectedItem(item);
+  setActiveMenu(item.id);
+};
+
+const handleMenuClose = () => {
+  setAnchorEl(null);
+  setSelectedItem(null);
+  setActiveMenu(null);
+};
+
+const handleMenuAction = (action) => {
+  if (selectedItem) {
+    handleAction(action, selectedItem); // This function must be defined by you
+    handleMenuClose();
+  }
+};
+
+  const renderTree = (items) => {
+    return items.map((item) => {
+      if (item.folder) {
+        return (
+          <div key={item.id} style={{ paddingLeft: "20px" }}>
+            <div
+              style={{
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                paddingRight: "8px",
+              }}
+            >
+              <div
+                style={{ display: "flex", alignItems: "center", gap: "8px" }}
+                onClick={() => handleToggle(item.id)}
+              >
+                <span>{item.isOpen ? "📂" : "📁"}</span>
+                <span>{item.folder}</span>
+                {item.sealed && (
+                  <span
+                    style={{
+                      backgroundColor: "#d50000",
+                      color: "#fff",
+                      padding: "2px 6px",
+                      borderRadius: "8px",
+                      fontSize: "12px",
+                    }}
+                  >
+                    Sealed
+                  </span>
+                )}
+              </div>
+              {/* <BsThreeDotsVertical style={{ cursor: "pointer" }} /> */}
+              <div style={{ position: "relative" }}>
+            <IconButton onClick={(e) => handleMenuOpen(e, item)}>
+              <BsThreeDotsVertical />
+            </IconButton>
+          </div>
+
+            </div>
+            {item.isOpen && item.contents?.length > 0 && (
+              <div>{renderTree(item.contents)}</div>
+            )}
+          </div>
+        );
+      } else {
+        return (
+          <div
+            key={item.id}
+            style={{
+              paddingLeft: "40px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              paddingRight: "8px",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <span>📄</span>
+              <span>{item.file}</span>
+              {item.sealed && (
+                <span
+                  style={{
+                    backgroundColor: "#d50000",
+                    color: "#fff",
+                    padding: "2px 6px",
+                    borderRadius: "8px",
+                    fontSize: "12px",
+                  }}
+                >
+                  Sealed
+                </span>
+              )}
+            </div>
+            <div style={{ position: "relative" }}>
+            <IconButton onClick={(e) => handleMenuOpen(e, item)}>
+              <BsThreeDotsVertical />
+            </IconButton>
+          </div>
+          </div>
+        );
+      }
+    });
   };
   
   const fetchPrivateFolders = async () => {
@@ -236,21 +486,6 @@ const App = () => {
   };
  
 
-  const handleMenuClick = (e, item) => {
-    e.stopPropagation();
-    setAnchorEl(e.currentTarget);
-    setContextItem(item);
-  };
-
-  const handleMenuClose = () => {
-    setAnchorEl(null);
-    setContextItem(null);
-  };
-
-  const handleMenuAction = (action) => {
-    console.log(`${action} clicked`, contextItem);
-    handleMenuClose();
-  };
   const renderPrivateFolderContents = (contents, setContents) =>
     contents.map((item, index) => {
       if (item.folder) {
@@ -387,114 +622,114 @@ const App = () => {
         }
         return null;
       });
-      const renderContents = (contents, setContents) => {
-        if (!Array.isArray(contents)) return null; // Guard clause
+      // const renderContents = (contents, setContents) => {
+      //   if (!Array.isArray(contents)) return null; // Guard clause
       
-        return contents.map((item, index) => {
-          if (item.folder) {
-            const toggleFolder = () => {
-              const updated = contents.map((f, i) =>
-                i === index ? { ...f, isOpen: !f.isOpen } : f
-              );
-              setContents(updated);
-            };
+      //   return contents.map((item, index) => {
+      //     if (item.folder) {
+      //       const toggleFolder = () => {
+      //         const updated = contents.map((f, i) =>
+      //           i === index ? { ...f, isOpen: !f.isOpen } : f
+      //         );
+      //         setContents(updated);
+      //       };
       
-            const selectFolder = () => setSelectedFolderId(item.id);
-            console.log("janavi", selectedFolderId);
+      //       const selectFolder = () => setSelectedFolderId(item.id);
+      //       console.log("janavi", selectedFolderId);
       
-            return (
-              <div key={index} style={{ marginLeft: "20px", marginBottom: "4px" }}>
-                <div
-                  style={{
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    padding: "6px 8px",
-                    borderRadius: "4px",
-                    backgroundColor: selectedFolderId === item.id ? "#e0f7fa" : "transparent",
-                  }}
-                  onClick={selectFolder}
-                >
-                  <div
-                    onClick={toggleFolder}
-                    style={{ display: "flex", alignItems: "center", flexGrow: 1 }}
-                  >
-                    <span style={{ marginRight: "8px" }}>
-                      {item.isOpen ? "📂" : "📁"}
-                    </span>
-                    <strong style={{ fontWeight: 500 }}>{item.folder}</strong>
-                    <SealedChip sealed={item.sealed} />
-                  </div>
-                  <IconButton
-                    size="small"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleMenuClick(e, item);
-                    }}
-                  >
-                    <BsThreeDotsVertical />
-                  </IconButton>
-                </div>
-                {item.isOpen && item.contents?.length > 0 && (
-                  <div style={{ marginTop: "4px" }}>
-                    {renderContents(item.contents, (newContents) => {
-                      const updated = contents.map((f, i) =>
-                        i === index ? { ...f, contents: newContents } : f
-                      );
-                      setContents(updated);
-                    })}
-                  </div>
-                )}
-              </div>
-            );
-          } else if (item.file) {
-            // Construct the file URL
-            const fileUrl = item.filePath || `http://localhost:8000/uploads/${item.file}`;
+      //       return (
+      //         <div key={index} style={{ marginLeft: "20px", marginBottom: "4px" }}>
+      //           <div
+      //             style={{
+      //               cursor: "pointer",
+      //               display: "flex",
+      //               alignItems: "center",
+      //               padding: "6px 8px",
+      //               borderRadius: "4px",
+      //               backgroundColor: selectedFolderId === item.id ? "#e0f7fa" : "transparent",
+      //             }}
+      //             onClick={selectFolder}
+      //           >
+      //             <div
+      //               onClick={toggleFolder}
+      //               style={{ display: "flex", alignItems: "center", flexGrow: 1 }}
+      //             >
+      //               <span style={{ marginRight: "8px" }}>
+      //                 {item.isOpen ? "📂" : "📁"}
+      //               </span>
+      //               <strong style={{ fontWeight: 500 }}>{item.folder}</strong>
+      //               <SealedChip sealed={item.sealed} />
+      //             </div>
+      //             <IconButton
+      //               size="small"
+      //               onClick={(e) => {
+      //                 e.stopPropagation();
+      //                 // handleMenuClick(e, item);
+      //               }}
+      //             >
+      //               <BsThreeDotsVertical />
+      //             </IconButton>
+      //           </div>
+      //           {item.isOpen && item.contents?.length > 0 && (
+      //             <div style={{ marginTop: "4px" }}>
+      //               {renderContents(item.contents, (newContents) => {
+      //                 const updated = contents.map((f, i) =>
+      //                   i === index ? { ...f, contents: newContents } : f
+      //                 );
+      //                 setContents(updated);
+      //               })}
+      //             </div>
+      //           )}
+      //         </div>
+      //       );
+      //     } else if (item.file) {
+      //       // Construct the file URL
+      //       const fileUrl = item.filePath || `http://localhost:8000/uploads/${item.file}`;
       
-            return (
-              <div
-                key={index}
-                style={{
-                  marginLeft: "40px",
-                  padding: "4px 8px",
-                  fontSize: "14px",
-                  color: "#555",
-                  display: "flex",
-                  alignItems: "center",
-                  cursor: "pointer",
-                }}
-              >
-                <span style={{ marginRight: "8px" }}>📄</span>
-                <a
-                  href={fileUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    fontWeight: 500,
-                    flexGrow: 1,
-                    textDecoration: "none",
-                    color: "#555",
-                  }}
-                >
-                  {item.file}
-                </a>
-                <SealedChip sealed={item.sealed} />
-                <IconButton
-                  size="small"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleMenuClick(e, item);
-                  }}
-                >
-                  <BsThreeDotsVertical />
-                </IconButton>
-              </div>
-            );
-          }
+      //       return (
+      //         <div
+      //           key={index}
+      //           style={{
+      //             marginLeft: "40px",
+      //             padding: "4px 8px",
+      //             fontSize: "14px",
+      //             color: "#555",
+      //             display: "flex",
+      //             alignItems: "center",
+      //             cursor: "pointer",
+      //           }}
+      //         >
+      //           <span style={{ marginRight: "8px" }}>📄</span>
+      //           <a
+      //             href={fileUrl}
+      //             target="_blank"
+      //             rel="noopener noreferrer"
+      //             style={{
+      //               fontWeight: 500,
+      //               flexGrow: 1,
+      //               textDecoration: "none",
+      //               color: "#555",
+      //             }}
+      //           >
+      //             {item.file}
+      //           </a>
+      //           <SealedChip sealed={item.sealed} />
+      //           <IconButton
+      //             size="small"
+      //             onClick={(e) => {
+      //               e.stopPropagation();
+      //               // handleMenuClick(e, item);
+      //             }}
+      //           >
+      //             <BsThreeDotsVertical />
+      //           </IconButton>
+      //         </div>
+      //       );
+      //     }
       
-          return null;
-        });
-      };
+      //     return null;
+      //   });
+      // };
       
       // const renderContents = (contents, setContents) => {
       //   if (!Array.isArray(contents)) return null; // ✅ Guard clause to avoid .map on null
@@ -686,7 +921,7 @@ const App = () => {
   //     }
   //     return null;
   //   });
-  const [clientFiles, setClientFiles] = useState([]);
+  
  
   // useEffect(() => {
   //   const fetchFileDetails = async () => {
@@ -826,9 +1061,10 @@ const App = () => {
         {renderContents(structFolder.folders, (newFolders) =>
           setStructFolder({ ...structFolder, folders: newFolders })
         )} */}
-        {renderContents(combinedFolderStructure, (newStructure) =>
+        {/* {renderContents(combinedFolderStructure, (newStructure) =>
   setCombinedFolderStructure(newStructure)
-)}
+)} */}
+  <div>{renderTree(combinedFolderStructure)}</div>
 
       </Box>
       <Box>
@@ -912,13 +1148,27 @@ const App = () => {
   anchorEl={anchorEl}
   open={Boolean(anchorEl)}
   onClose={handleMenuClose}
+  anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+  transformOrigin={{ vertical: "top", horizontal: "right" }}
 >
-  <MenuItem onClick={() => handleMenuAction("Edit")}>Edit</MenuItem>
-  <MenuItem onClick={() => handleMenuAction("Delete")}>Delete</MenuItem>
-  <MenuItem onClick={() => handleMenuAction(contextItem?.sealed ? "Unseal" : "Seal")}>
-    {contextItem?.sealed ? "Unseal" : "Seal"}
-  </MenuItem>
+  {selectedItem?.folder === "Client Uploaded Documents" ? (
+    <>
+      <MenuItem onClick={() => handleMenuAction("new-folder")}>New Folder</MenuItem>
+      <MenuItem onClick={() => handleMenuAction("edit")}>Edit</MenuItem>
+    </>
+  ) : (
+    <>
+      <MenuItem onClick={() => handleMenuAction("new-folder")}>New Folder</MenuItem>
+      <MenuItem onClick={() => handleMenuAction("edit")}>Edit</MenuItem>
+      <MenuItem onClick={() => handleMenuAction("delete")}>Delete</MenuItem>
+      <MenuItem onClick={() => handleMenuAction("move")}>Move</MenuItem>
+      <MenuItem onClick={() => handleMenuAction(selectedItem?.sealed ? "unseal" : "seal")}>
+        {selectedItem?.sealed ? "Unseal" : "Seal"}
+      </MenuItem>
+    </>
+  )}
 </Menu>
+
       {/* ADMIN UPLAOD DOC DRAER */}
       <UploadDrawer
         open={isDocumentForm}

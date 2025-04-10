@@ -582,7 +582,7 @@ const UploadDocument = ({ open, onClose, file ,fetchUnSealedFolders,fetchAdminPr
     return <Box>Error: {error}</Box>;
   }
 
-  if (!structFolder) {
+  if (!structFolder || !privateStructFolder) {
     return <Box>Loading...</Box>;
   }
 

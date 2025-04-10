@@ -9,24 +9,35 @@ const getsClientUploadedDocsUnsealed = async (req, res) => {
       return res.status(400).json({ error: "Missing folder ID in request params." });
     }
 
-    const uploadsPath = path.join(__dirname, `../uploads/FolderTemplates/${id}/Client Uploaded Documents/unsealed`);
+    const baseRelativePath = `uploads/FolderTemplates/${id}/Client Uploaded Documents/unsealed`;
+    const uploadsPath = path.join(__dirname, `../${baseRelativePath}`);
 
-    // Recursive function to get all files and subfolders
-    const getAllItems = async (dir) => {
+    // Utility to normalize path to forward slashes
+    const toForwardSlash = (p) => p.replace(/\\/g, "/");
+
+    // Recursive function
+    const getAllItems = async (dir, relativePath = "") => {
       const entries = await fs.readdir(dir, { withFileTypes: true });
       const items = await Promise.all(entries.map(async (entry) => {
         const fullPath = path.join(dir, entry.name);
+        const itemRelativePath = toForwardSlash(path.join(baseRelativePath, relativePath, entry.name));
         if (entry.isDirectory()) {
-          const subItems = await getAllItems(fullPath);
-          return { folder: entry.name, contents: subItems };
+          const subItems = await getAllItems(fullPath, path.join(relativePath, entry.name));
+          return {
+            folder: entry.name,
+            path: itemRelativePath,
+            contents: subItems
+          };
         } else {
-          return { file: entry.name };
+          return {
+            file: entry.name,
+            path: itemRelativePath
+          };
         }
       }));
       return items;
     };
 
-    // Check if directory exists
     await fs.access(uploadsPath);
 
     const folderData = await getAllItems(uploadsPath);
@@ -44,203 +55,153 @@ const getsClientUploadedDocssealed = async (req, res) => {
       return res.status(400).json({ error: "Missing folder ID in request params." });
     }
 
-    const uploadsPath = path.join(__dirname, `../uploads/FolderTemplates/${id}/Client Uploaded Documents/sealed`);
+    const baseRelativePath = `uploads/FolderTemplates/${id}/Client Uploaded Documents/sealed`;
+    const uploadsPath = path.join(__dirname, `../${baseRelativePath}`);
 
-    // Recursive function to get all files and subfolders
-    const getAllItems = async (dir) => {
+    const toForwardSlash = (p) => p.replace(/\\/g, "/");
+
+    const getAllItems = async (dir, relativePath = "") => {
       const entries = await fs.readdir(dir, { withFileTypes: true });
       const items = await Promise.all(entries.map(async (entry) => {
         const fullPath = path.join(dir, entry.name);
+        const itemRelativePath = toForwardSlash(path.join(baseRelativePath, relativePath, entry.name));
         if (entry.isDirectory()) {
-          const subItems = await getAllItems(fullPath);
-          return { folder: entry.name, contents: subItems };
+          const subItems = await getAllItems(fullPath, path.join(relativePath, entry.name));
+          return {
+            folder: entry.name,
+            path: itemRelativePath,
+            contents: subItems
+          };
         } else {
-          return { file: entry.name };
+          return {
+            file: entry.name,
+            path: itemRelativePath
+          };
         }
       }));
       return items;
     };
 
-    // Check if directory exists
     await fs.access(uploadsPath);
 
     const folderData = await getAllItems(uploadsPath);
     res.status(200).json({ folders: folderData });
   } catch (error) {
-    console.error("Error fetching client uploaded documents:", error.message);
+    console.error("Error fetching client uploaded sealed documents:", error.message);
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
-const moveClientUploadedDocsToUnsealed = async (req, res) => {
-  try {
-    const { id } = req.params;
+// const getsClientUploadedDocsUnsealed = async (req, res) => {
+//   try {
+//     const { id } = req.params;
 
-    if (!id) {
-      return res.status(400).json({ error: "Missing folder ID in request params." });
-    }
+//     if (!id) {
+//       return res.status(400).json({ error: "Missing folder ID in request params." });
+//     }
 
-    const basePath = path.join(__dirname, "../uploads/FolderTemplates", id, "Client Uploaded Documents");
-    const sealedPath = path.join(basePath, "sealed");
-    const unsealedPath = path.join(basePath, "unsealed");
+//     const uploadsPath = path.join(__dirname, `../uploads/FolderTemplates/${id}/Client Uploaded Documents/unsealed`);
 
-    // Recursive function to move files and folders
-    const moveRecursive = async (src, dest) => {
-      await fs.mkdir(dest, { recursive: true });
+//     // Recursive function to get all files and subfolders
+//     const getAllItems = async (dir) => {
+//       const entries = await fs.readdir(dir, { withFileTypes: true });
+//       const items = await Promise.all(entries.map(async (entry) => {
+//         const fullPath = path.join(dir, entry.name);
+//         if (entry.isDirectory()) {
+//           const subItems = await getAllItems(fullPath);
+//           return { folder: entry.name, contents: subItems };
+//         } else {
+//           return { file: entry.name };
+//         }
+//       }));
+//       return items;
+//     };
 
-      const entries = await fs.readdir(src, { withFileTypes: true });
+//     // Check if directory exists
+//     await fs.access(uploadsPath);
 
-      for (const entry of entries) {
-        const srcPath = path.join(src, entry.name);
-        const destPath = path.join(dest, entry.name);
+//     const folderData = await getAllItems(uploadsPath);
+//     res.status(200).json({ folders: folderData });
+//   } catch (error) {
+//     console.error("Error fetching client uploaded documents:", error.message);
+//     res.status(500).json({ error: "Internal Server Error" });
+//   }
+// };
+// const getsClientUploadedDocssealed = async (req, res) => {
+//   try {
+//     const { id } = req.params;
 
-        if (entry.isDirectory()) {
-          await moveRecursive(srcPath, destPath);
-          await fs.rmdir(srcPath); // Remove empty source folder
-        } else {
-          await fs.rename(srcPath, destPath); // Move file
-        }
-      }
-    };
+//     if (!id) {
+//       return res.status(400).json({ error: "Missing folder ID in request params." });
+//     }
 
-    await fs.access(sealedPath); // Make sure sealed exists
-    await moveRecursive(sealedPath, unsealedPath);
+//     const uploadsPath = path.join(__dirname, `../uploads/FolderTemplates/${id}/Client Uploaded Documents/sealed`);
 
-    res.status(200).json({ message: "Documents moved back to unsealed successfully." });
-  } catch (error) {
-    console.error("Error moving documents back to unsealed:", error.message);
-    res.status(500).json({ error: "Failed to move documents back to unsealed." });
-  }
-};
+//     // Recursive function to get all files and subfolders
+//     const getAllItems = async (dir) => {
+//       const entries = await fs.readdir(dir, { withFileTypes: true });
+//       const items = await Promise.all(entries.map(async (entry) => {
+//         const fullPath = path.join(dir, entry.name);
+//         if (entry.isDirectory()) {
+//           const subItems = await getAllItems(fullPath);
+//           return { folder: entry.name, contents: subItems };
+//         } else {
+//           return { file: entry.name };
+//         }
+//       }));
+//       return items;
+//     };
 
-const moveClientUploadedDocsToSealed = async (req, res) => {
-  try {
-    const { id } = req.params;
+//     // Check if directory exists
+//     await fs.access(uploadsPath);
 
-    if (!id) {
-      return res.status(400).json({ error: "Missing folder ID in request params." });
-    }
+//     const folderData = await getAllItems(uploadsPath);
+//     res.status(200).json({ folders: folderData });
+//   } catch (error) {
+//     console.error("Error fetching client uploaded documents:", error.message);
+//     res.status(500).json({ error: "Internal Server Error" });
+//   }
+// };
 
-    const basePath = path.join(__dirname, "../uploads/FolderTemplates", id, "Client Uploaded Documents");
-    const unsealedPath = path.join(basePath, "unsealed");
-    const sealedPath = path.join(basePath, "sealed");
-
-    // Recursive function to move files and folders
-    const moveRecursive = async (src, dest) => {
-      await fs.mkdir(dest, { recursive: true });
-
-      const entries = await fs.readdir(src, { withFileTypes: true });
-
-      for (const entry of entries) {
-        const srcPath = path.join(src, entry.name);
-        const destPath = path.join(dest, entry.name);
-
-        if (entry.isDirectory()) {
-          await moveRecursive(srcPath, destPath);
-          await fs.rmdir(srcPath); // Remove empty source folder
-        } else {
-          await fs.rename(srcPath, destPath); // Move file
-        }
-      }
-    };
-
-    await fs.access(unsealedPath); // Make sure unsealed exists
-    await moveRecursive(unsealedPath, sealedPath);
-
-    res.status(200).json({ message: "Documents moved to sealed successfully." });
-  } catch (error) {
-    console.error("Error moving client documents to sealed:", error.message);
-    res.status(500).json({ error: "Failed to move documents." });
-  }
-};
 const moveBetweenSealedUnsealed = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { itemPath, direction } = req.body; // direction: 'seal' or 'unseal'
+    const { id, itemPath, direction } = req.body;
 
     if (!id || !itemPath || !direction) {
       return res.status(400).json({ 
-        error: "Missing required parameters: folder ID, item path, or direction" 
+        error: "Missing required parameters: id, itemPath, or direction" 
       });
     }
 
-    if (direction !== 'seal' && direction !== 'unseal') {
+    if (direction !== 'toSealed' && direction !== 'toUnsealed') {
       return res.status(400).json({ 
-        error: "Invalid direction. Must be 'seal' or 'unseal'" 
+        error: "Invalid direction. Must be 'toSealed' or 'toUnsealed'" 
       });
     }
 
-    const basePath = path.join(__dirname, `../uploads/FolderTemplates/${id}/Client Uploaded Documents`);
-    const sourcePath = path.join(
-      basePath, 
-      direction === 'seal' ? 'unsealed' : 'sealed',
-      itemPath
-    );
-    const targetPath = path.join(
-      basePath, 
-      direction === 'seal' ? 'sealed' : 'unsealed',
-      itemPath
-    );
+    const basePath = `uploads/FolderTemplates/${id}/Client Uploaded Documents`;
+    const sourceBase = direction === 'toSealed' ? 'unsealed' : 'sealed';
+    const targetBase = direction === 'toSealed' ? 'sealed' : 'unsealed';
 
-    // Check if source exists
-    await fs.access(sourcePath);
+    // Construct full paths
+    const fullSourcePath = path.join(__dirname, `../${basePath}/${sourceBase}`, itemPath);
+    const fullTargetPath = path.join(__dirname, `../${basePath}/${targetBase}`, itemPath);
 
-    // Create target directory structure if needed
-    await fs.mkdir(path.dirname(targetPath), { recursive: true });
+    // Ensure target directory exists
+    await fs.mkdir(path.dirname(fullTargetPath), { recursive: true });
 
     // Move the file/folder
-    await fs.rename(sourcePath, targetPath);
+    await fs.rename(fullSourcePath, fullTargetPath);
 
     res.status(200).json({ 
-      message: `Item ${direction === 'seal' ? 'sealed' : 'unsealed'} successfully` 
+      message: `Successfully moved item ${direction === 'toSealed' ? 'to sealed' : 'to unsealed'}` 
     });
   } catch (error) {
     console.error("Error moving item:", error.message);
-    if (error.code === 'ENOENT') {
-      return res.status(404).json({ error: "Item not found" });
-    }
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
 
-const moveToSealed = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { itemPath } = req.body; // Path relative to the unsealed directory
 
-    if (!id) {
-      return res.status(400).json({ error: "Missing folder ID in request params." });
-    }
-
-    if (!itemPath) {
-      return res.status(400).json({ error: "Missing item path in request body." });
-    }
-
-    const sourceBasePath = path.join(__dirname, `../uploads/FolderTemplates/${id}/Client Uploaded Documents/unsealed`);
-    const destinationBasePath = path.join(__dirname, `../uploads/FolderTemplates/${id}/Client Uploaded Documents/sealed`);
-
-    const sourcePath = path.join(sourceBasePath, itemPath);
-    const destinationPath = path.join(destinationBasePath, itemPath);
-
-    // Check if source exists
-    await fs.access(sourcePath);
-
-    // Create destination directory structure if it doesn't exist
-    await fs.mkdir(path.dirname(destinationPath), { recursive: true });
-
-    // Move the item
-    await fs.rename(sourcePath, destinationPath);
-
-    res.status(200).json({ message: "Item moved successfully" });
-  } catch (error) {
-    console.error("Error moving item to sealed:", error.message);
-    
-    if (error.code === 'ENOENT') {
-      return res.status(404).json({ error: "Item not found" });
-    }
-    
-    res.status(500).json({ error: "Internal Server Error" });
-  }
-};
 const getsClientUploadedDocs = async (req, res) => {
   try {
     const { id } = req.params;
@@ -466,4 +427,4 @@ const getsFirmDocs = async (req, res) => {
   }
 };
 
-module.exports = {getsFirmDocs,moveToSealed, moveClientUploadedDocsToUnsealed,moveClientUploadedDocsToSealed,getsClientUploadedDocsUnsealed ,getsClientUploadedDocssealed,getsPrivateDocs,getsClientUploadedDocs,moveBetweenSealedUnsealed};
+module.exports = {getsFirmDocs,getsClientUploadedDocsUnsealed ,getsClientUploadedDocssealed,getsPrivateDocs,getsClientUploadedDocs,moveBetweenSealedUnsealed};

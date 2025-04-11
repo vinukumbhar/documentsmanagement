@@ -1,34 +1,53 @@
-import React, { useEffect, useState } from "react";
+import { Box, Typography,IconButton ,Input} from '@mui/material'
+import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { HiDocumentArrowUp } from "react-icons/hi2";
 import { FaRegFolderClosed } from "react-icons/fa6";
 import { MdOutlineDriveFolderUpload } from "react-icons/md";
-import { Box, Typography, IconButton } from "@mui/material";
-import FolderIcon from "@mui/icons-material/Folder";
-import FolderOpenIcon from "@mui/icons-material/FolderOpen";
-import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
-
-
-const CreateFolder = () => {
-    const templateId = "67ea43c004956fca8db1d445"
-  
+import UploadDrawer from "./uploadDocumentWorking";
+import CreateFolder from "./CreateFolder";
+import UploadFolder from "./folderUpload";
+const ClientDocs = () => {
+  const templateId = "67ea43c004956fca8db1d445";
+    const folderInputRef = useRef(null);
+  const [combinedFolderStructure,setCombinedFolderStructure]=useState(null)
+    const [file, setFile] = useState(null);
+      const [isFolderFormOpen, setIsFolderFormOpen] = useState(false);
+      const [isUploadFolderFormOpen, setIsUploadFolderFormOpen] = useState(false);
+    const [isDocumentForm, setIsDocumentForm] = useState(false);
+  const handleFileChange = (e) => setFile(e.target.files[0]);
+  const handleFileUpload = () => setIsDocumentForm(true);
+  const handleCreateFolderClick = () => setIsFolderFormOpen((prev) => !prev);
+  const [error, setError] = useState(null);
+    const [folderFiles, setFolderFiles] = useState([]);
+    const [folderName, setFolderName] = useState("");
+  const [structFolder, setStructFolder] = useState(null);
+   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const handleFolderSelection = (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length > 0) {
+      const folderNameFromPath = files[0].webkitRelativePath.split("/")[0];
+      setFolderName(folderNameFromPath);
+      setFolderFiles(files);
+      setIsDrawerOpen(true);
+    }
+    e.target.value = "";
+  };
+  const openDrawer = () => {
+    setIsUploadFolderFormOpen(true);
+  };
     useEffect(() => {
-      console.log(templateId);
-    }, [templateId]);
-  
-    const [structFolder, setStructFolder] = useState(null);
-    const [error, setError] = useState(null);
-    const [selectedFolderId, setSelectedFolderId] = useState(null);
-  
+      if (isDrawerOpen) openDrawer();
+    }, [isDrawerOpen]);
+
     useEffect(() => {
-      if (templateId) {
-        fetchUnSealedFolders();
-      }
+      fetchBothFolders();
+      fetchUnSealedFolders()
     }, [templateId]);
     const fetchUnSealedFolders = async () => {
       try {
         const res = await axios.get(
-          `http://127.0.0.1:8000/clients/unsealed/${templateId}`
+          `http://localhost:8000/admin/unsealed/${templateId}`
         );
         const folders = res.data.folders || [];
   
@@ -48,334 +67,144 @@ const CreateFolder = () => {
         setError(err.message || "Error fetching unsealed folders.");
       }
     };
-    // const fetchFolders = async () => {
-    //   try {
-    //     const url = `http://localhost:8000/clients/filtereddocs/${templateId}`;
-    //     const response = await axios.get(url);
-  
-    //     const addIsOpenProperty = (folders, parentId = null) =>
-    //       folders.map((folder, index) => ({
-    //         ...folder,
-    //         isOpen: false, // Initially close all folders
-    //         id: `${parentId ? `${parentId}-` : ""}${index}`,
-    //         contents: folder.contents
-    //           ? addIsOpenProperty(
-    //               folder.contents,
-    //               `${parentId ? `${parentId}-` : ""}${index}`
-    //             )
-    //           : [],
-    //       }));
-  
-    //     const processedData = {
-    //       ...response.data,
-    //       folders: addIsOpenProperty(response.data.folders || []),
-    //     };
-  
-    //     setStructFolder(processedData);
-    //   } catch (err) {
-    //     console.error("Error fetching all folders:", err);
-    //     setError(err.message || "An error occurred");
-    //   }
-    // };
-  
-    // const renderContents = (contents, setContents) => {
-    //   return contents.map((item, index) => {
-    //     if (item.folder) {
-    //       const toggleFolder = () => {
-    //         const updatedContents = contents.map((folder, i) =>
-    //           i === index ? { ...folder, isOpen: !folder.isOpen } : folder
-    //         );
-    //         setContents(updatedContents);
-    //       };
-  
-    //       const selectFolder = () => setSelectedFolderId(item.id);
-  
-    //       return (
-    //         <div key={index} style={{ marginLeft: "20px" }}>
-    //           <div
-    //             style={{
-    //               cursor: "pointer",
-    //               display: "flex",
-    //               alignItems: "center",
-  
-    //             }}
-    //             onClick={selectFolder}
-    //           >
-    //             <div onClick={toggleFolder}>
-    //               {item.isOpen ? "📂" : "📁"} <strong style={{ marginLeft: "5px" }}>{item.folder}</strong>
-    //             </div>
-    //           </div>
-    //           {item.isOpen && item.contents && item.contents.length > 0 && (
-    //             <div>
-    //               {renderContents(item.contents, (newContents) => {
-    //                 const updatedFolders = contents.map((folder, i) =>
-    //                   i === index ? { ...folder, contents: newContents } : folder
-    //                 );
-    //                 setContents(updatedFolders);
-    //               })}
-    //             </div>
-    //           )}
-    //         </div>
-    //       );
-    //     } else if (item.file) {
-    //       return (
-    //         <div key={index} style={{ marginLeft: "40px" }}>
-    //           📄 {item.file}
-    //         </div>
-    //       );
-    //     }
-    //     return null;
-    //   });
-    // };
-    // const clientrenderContents = (contents, setContents) => {
-    //     return contents.flatMap((item, index) => {
-    //       // Skip rendering the "unsealed" folder and show only its contents
-    //       if (item.folder === "unsealed") {
-    //         return clientrenderContents(item.contents || [], (newInnerContents) => {
-    //           const updatedContents = contents.map((c, i) =>
-    //             i === index ? { ...c, contents: newInnerContents } : c
-    //           );
-    //           setContents(updatedContents);
-    //         });
-    //       }
-      
-    //       if (item.folder) {
-    //         const toggleFolder = () => {
-    //           const updatedContents = contents.map((folder, i) =>
-    //             i === index ? { ...folder, isOpen: !folder.isOpen } : folder
-    //           );
-    //           setContents(updatedContents);
-    //         };
-      
-    //         const selectFolder = () => setSelectedFolderId(item.id);
-      
-    //         return (
-    //           <div key={index} style={{ marginLeft: "20px" }}>
-    //             <div
-    //               style={{
-    //                 cursor: "pointer",
-    //                 display: "flex",
-    //                 alignItems: "center",
-    //               }}
-    //               onClick={selectFolder}
-    //             >
-    //               <div onClick={toggleFolder}>
-    //                 {item.isOpen ? "📂" : "📁"}{" "}
-    //                 <strong style={{ marginLeft: "5px" }}>{item.folder}</strong>
-    //               </div>
-    //             </div>
-    //             {item.isOpen && item.contents && item.contents.length > 0 && (
-    //               <div>
-    //                 {clientrenderContents(item.contents, (newContents) => {
-    //                   const updatedFolders = contents.map((folder, i) =>
-    //                     i === index ? { ...folder, contents: newContents } : folder
-    //                   );
-    //                   setContents(updatedFolders);
-    //                 })}
-    //               </div>
-    //             )}
-    //           </div>
-    //         );
-    //       } else if (item.file) {
-    //         return (
-    //           <div key={index} style={{ marginLeft: "40px" }}>
-    //             📄 {item.file}
-    //           </div>
-    //         );
-    //       }
-    //       return null;
-    //     });
-    //   };
-      
-    // const clientrenderContents = (contents, setContents, depth = 0) => {
-    //     return contents.flatMap((item, index) => {
-    //       const indent = `${depth * 20}px`;
-      
-    //       if (item.folder === "unsealed") {
-    //         return clientrenderContents(item.contents || [], (newInnerContents) => {
-    //           const updatedContents = contents.map((c, i) =>
-    //             i === index ? { ...c, contents: newInnerContents } : c
-    //           );
-    //           setContents(updatedContents);
-    //         }, depth);
-    //       }
-      
-    //       // Folder Rendering
-    //       if (item.folder) {
-    //         const toggleFolder = () => {
-    //           const updatedContents = contents.map((folder, i) =>
-    //             i === index ? { ...folder, isOpen: !folder.isOpen } : folder
-    //           );
-    //           setContents(updatedContents);
-    //         };
-      
-    //         const selectFolder = () => setSelectedFolderId(item.id);
-      
-    //         return (
-    //           <div key={item.id} style={{ marginLeft: indent }}>
-    //             <div
-    //               style={{
-    //                 display: "flex",
-    //                 alignItems: "center",
-    //                 justifyContent: "space-between",
-    //                 backgroundColor: selectedFolderId === item.id ? "#e8f0fe" : "transparent",
-    //                 padding: "6px 10px",
-    //                 borderRadius: "6px",
-    //                 transition: "background-color 0.2s ease",
-    //                 cursor: "pointer",
-    //                 border: "1px solid #f0f0f0",
-    //                 marginBottom: "4px"
-    //               }}
-    //               onClick={selectFolder}
-    //             >
-    //               <div
-    //                 style={{ display: "flex", alignItems: "center", flexGrow: 1 }}
-    //                 onClick={(e) => {
-    //                   e.stopPropagation();
-    //                   toggleFolder();
-    //                 }}
-    //               >
-    //                 <span style={{ fontSize: "18px" }}>{item.isOpen ? "📂" : "📁"}</span>
-    //                 <strong style={{ marginLeft: "8px", fontSize: "14px" }}>{item.folder}</strong>
-    //               </div>
-    //             </div>
-      
-    //             {/* Nested contents */}
-    //             {item.isOpen && item.contents && item.contents.length > 0 && (
-    //               <div>
-    //                 {clientrenderContents(item.contents, (newContents) => {
-    //                   const updatedFolders = contents.map((folder, i) =>
-    //                     i === index ? { ...folder, contents: newContents } : folder
-    //                   );
-    //                   setContents(updatedFolders);
-    //                 }, depth + 1)}
-    //               </div>
-    //             )}
-    //           </div>
-    //         );
-    //       }
-      
-    //       // File Rendering
-    //       if (item.file) {
-    //         return (
-    //           <div
-    //             key={`${item.id}-${index}`}
-    //             style={{
-    //               marginLeft: `${(depth + 1) * 20}px`,
-    //               display: "flex",
-    //               alignItems: "center",
-    //               justifyContent: "space-between",
-    //               padding: "6px 10px",
-    //               backgroundColor: "#fff",
-    //               borderRadius: "6px",
-    //               border: "1px solid #f0f0f0",
-    //               marginBottom: "4px",
-    //               transition: "background-color 0.2s ease"
-    //             }}
-    //           >
-    //             <div style={{ display: "flex", alignItems: "center", flexGrow: 1 }}>
-    //               <span style={{ fontSize: "18px", marginRight: "8px" }}>📄</span>
-    //               <span style={{ fontSize: "14px" }}>{item.file}</span>
-    //             </div>
-    //           </div>
-    //         );
-    //       }
-      
-    //       return null;
-    //     });
-    //   };
-
-    const renderContents = (contents, setContents) =>
-      contents.map((item, index) => {
-        if (item.folder) {
-          const toggleFolder = () => {
-            const updated = contents.map((f, i) =>
-              i === index ? { ...f, isOpen: !f.isOpen } : f
-            );
-            setContents(updated);
-          };
+    const fetchBothFolders = async () => {
+      try {
+        const [sealedRes, unsealedRes] = await Promise.all([
+          axios.get(`http://localhost:8000/admin/sealedFolders/${templateId}`),
+          axios.get(`http://localhost:8000/admin/unsealed/${templateId}`),
+        ]);
     
-          const selectFolder = () => setSelectedFolderId(item.id);
-    console.log("janavi",selectedFolderId)
+        const addIsOpen = (items, parentId = "", sealed = false) =>
+          items.map((folder, index) => ({
+            ...folder,
+            isOpen: false,
+            id: `${parentId}${index}`,
+            sealed,
+            contents: folder.contents
+              ? addIsOpen(folder.contents, `${parentId}${index}-`, sealed)
+              : [],
+          }));
+    
+        const sealedFolders = addIsOpen(sealedRes.data.folders || [], "", true);
+        const unsealedFolders = addIsOpen(unsealedRes.data.folders || [], "", false);
+    
+        // Combine into a single parent folder
+        const combinedFolders = [
+          {
+            folder: "Client Uploaded Documents",
+            isOpen: false,
+            id: "client-root",
+            contents: [...sealedFolders, ...unsealedFolders],
+          },
+        ];
+    
+        // Set to a single state
+        setCombinedFolderStructure(combinedFolders); // <- new unified state
+        console.log("jaanvi patil",combinedFolders)
+      } catch (err) {
+        setError(err.message || "Error fetching folders.");
+      }
+    };
+    const toggleFolder = (folderId, folders) => {
+      return folders.map((item) => {
+        if (item.id === folderId) {
+          return { ...item, isOpen: !item.isOpen };
+        } else if (item.contents?.length) {
+          return { ...item, contents: toggleFolder(folderId, item.contents) };
+        }
+        return item;
+      });
+    };
+  const handleToggle = (id) => {
+    setCombinedFolderStructure((prev) => toggleFolder(id, prev));
+  };
+   const renderTree = (items) => {
+      return items.map((item) => {
+        if (item.folder) {
           return (
-            <div key={index} style={{ marginLeft: "20px", marginBottom: "4px" }}>
+            <div key={item.id} style={{ paddingLeft: "20px" }}>
               <div
                 style={{
                   cursor: "pointer",
                   display: "flex",
                   alignItems: "center",
-                  padding: "6px 8px",
-                  borderRadius: "4px",
-                  '&:hover': {
-                    backgroundColor: '#f5f5f5',
-                  },
+                  justifyContent: "space-between",
+                  paddingRight: "8px",
                 }}
-                onClick={selectFolder}
               >
                 <div
-                  onClick={toggleFolder}
-                  style={{ display: "flex", alignItems: "center", flexGrow: 1 }}
+                  style={{ display: "flex", alignItems: "center", gap: "8px" }}
+                  onClick={() => handleToggle(item.id)}
                 >
-                  <span style={{ marginRight: "8px" }}>
-                    {item.isOpen ? "📂" : "📁"}
-                  </span>
-                  <strong style={{ fontWeight: 500 }}>{item.folder}</strong>
-                  {/* <SealedChip sealed={item.sealed} /> */}
+                  <span>{item.isOpen ? "📂" : "📁"}</span>
+                  <span>{item.folder}</span>
+                  {item.sealed && (
+                    <span
+                      style={{
+                        backgroundColor: "#d50000",
+                        color: "#fff",
+                        padding: "2px 6px",
+                        borderRadius: "8px",
+                        fontSize: "12px",
+                      }}
+                    >
+                      Sealed
+                    </span>
+                  )}
                 </div>
-                
+                {/* <BsThreeDotsVertical style={{ cursor: "pointer" }} /> */}
+               
+  
               </div>
               {item.isOpen && item.contents?.length > 0 && (
-                <div style={{ marginTop: "4px" }}>
-                  {renderContents(item.contents, (newContents) => {
-                    const updated = contents.map((f, i) =>
-                      i === index ? { ...f, contents: newContents } : f
-                    );
-                    setContents(updated);
-                  })}
-                </div>
+                <div>{renderTree(item.contents)}</div>
               )}
             </div>
           );
-        } else if (item.file) {
+        } else {
           return (
             <div
-              key={index}
+              key={item.id}
               style={{
-                marginLeft: "40px",
-                padding: "4px 8px",
-                fontSize: "14px",
-                color: "#555",
+                paddingLeft: "40px",
                 display: "flex",
                 alignItems: "center",
-                '&:hover': {
-                  backgroundColor: '#f5f5f5',
-                },
+                justifyContent: "space-between",
+                paddingRight: "8px",
               }}
             >
-              <span style={{ marginRight: "8px" }}>📄</span>
-              <span style={{ fontWeight: 500, flexGrow: 1 }}>{item.file}</span>
-              {/* <SealedChip sealed={item.sealed} /> */}
-              
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <span>📄</span>
+                <span>{item.file}</span>
+                {item.sealed && (
+                  <span
+                    style={{
+                      backgroundColor: "#d50000",
+                      color: "#fff",
+                      padding: "2px 6px",
+                      borderRadius: "8px",
+                      fontSize: "12px",
+                    }}
+                  >
+                    Sealed
+                  </span>
+                )}
+              </div>
+              <div style={{ position: "relative" }}>
+             
+            </div>
             </div>
           );
         }
-        return null;
       });
-      
-    if (error) {
-      return <div>Error: {error}</div>;
-    }
-  
-    if (!structFolder) {
-      return <div>Loading...</div>;
-    }
-  
-    return (
+    };
+    if (error) return <div>Error: {error}</div>;
+    if (!combinedFolderStructure ) return <div>Loading...</div>;
+  return (
+  <Box>
+    <Typography variant="h2">CLIENT PORTAL</Typography>
 
-        <>
-        <Typography variant="h2" >CLIENT PORTAL</Typography>
-         <Box >
-         <Box
+    <Box
         sx={{
           backgroundColor: "#fff",
           borderRadius: "8px",
@@ -387,7 +216,7 @@ const CreateFolder = () => {
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
             <IconButton
               component="label"
-              // htmlFor="fileInput"
+              htmlFor="fileInput"
               sx={{ color: "#e87800" }}
             >
               <HiDocumentArrowUp size={24} />
@@ -395,17 +224,25 @@ const CreateFolder = () => {
             <Typography
               variant="body1"
               component="label"
-              // htmlFor="fileInput"
+              htmlFor="fileInput"
               sx={{ cursor: "pointer" }}
             >
               Upload Document
             </Typography>
-            
+            <Input
+              type="file"
+              id="fileInput"
+              onChange={(e) => {
+                handleFileChange(e);
+                handleFileUpload();
+              }}
+              sx={{ display: "none" }}
+            />
           </Box>
 
           <Box
             sx={{ display: "flex", alignItems: "center", gap: 1 }}
-            
+            onClick={handleCreateFolderClick}
           >
             <IconButton sx={{ color: "#e87800" }}>
               <FaRegFolderClosed size={20} />
@@ -422,24 +259,54 @@ const CreateFolder = () => {
               gap: 1,
               cursor: "pointer",
             }}
-            
+            onClick={() => folderInputRef.current.click()}
           >
             <IconButton sx={{ color: "#e87800" }}>
               <MdOutlineDriveFolderUpload size={24} />
             </IconButton>
             <Typography variant="body1">Upload Folder</Typography>
-            
+            <input
+              type="file"
+              ref={folderInputRef}
+              style={{ display: "none" }}
+              webkitdirectory="true"
+              directory="true"
+              onChange={handleFolderSelection}
+            />                             
           </Box>
         </Box>
       </Box>
-        {renderContents(structFolder.folders, (newFolders) =>
-          setStructFolder({ ...structFolder, folders: newFolders })
-        )}
-</Box>
-        </>
-    
-  
-    )
-  }
 
-export default CreateFolder;
+      <Box>
+      {renderTree(combinedFolderStructure)}
+      </Box>
+
+
+      <UploadDrawer
+        open={isDocumentForm}
+        onClose={() => setIsDocumentForm(false)}
+        file={file}
+        fetchUnSealedFolders={fetchUnSealedFolders}
+        // fetchAdminPrivateFolders={fetchPrivateFolders}
+      />
+       <CreateFolder
+        open={isFolderFormOpen}
+        onClose={() => setIsFolderFormOpen(false)}
+        fetchUnSealedFolders={fetchUnSealedFolders}
+        // fetchAdminPrivateFolders={fetchPrivateFolders}
+      />
+       <UploadFolder
+        open={isUploadFolderFormOpen}
+        folderFiles={folderFiles}
+        setFolderFiles={setFolderFiles}
+        setFolderName={setFolderName}
+        folderName={folderName}
+        onClose={() => setIsUploadFolderFormOpen(false)}
+        fetchUnSealedFolders={fetchUnSealedFolders}
+        // fetchAdminPrivateFolders={fetchPrivateFolders}
+      />
+  </Box>
+  )
+}
+
+export default ClientDocs

@@ -248,7 +248,6 @@ const getsClientUploadedDocs = async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
-
 const getsPrivateDocs = async (req, res) => {
   try {
     const { id } = req.params;
@@ -257,44 +256,98 @@ const getsPrivateDocs = async (req, res) => {
       return res.status(400).json({ error: "Missing folder ID in request params." });
     }
 
-    const uploadsPath = path.join(__dirname, `../uploads/FolderTemplates/${id}/Private`);
+    const baseRelativePath = `uploads/FolderTemplates/${id}/Private`;
+    const uploadsPath = path.join(__dirname, `../${baseRelativePath}`);
 
-    // Recursive function to get all files and subfolders
-    const getAllItems = async (dir) => {
+    const toForwardSlash = (p) => p.replace(/\\/g, "/");
+
+    const getAllItems = async (dir, relativePath = "") => {
       const entries = await fs.readdir(dir, { withFileTypes: true });
       const items = await Promise.all(entries.map(async (entry) => {
         const fullPath = path.join(dir, entry.name);
+        const itemRelativePath = toForwardSlash(path.join(baseRelativePath, relativePath, entry.name));
         if (entry.isDirectory()) {
-          const subItems = await getAllItems(fullPath);
-          return { folder: entry.name, contents: subItems };
+          const subItems = await getAllItems(fullPath, path.join(relativePath, entry.name));
+          return {
+            folder: entry.name,
+            path: itemRelativePath,
+            contents: subItems
+          };
         } else {
-          return { file: entry.name };
+          return {
+            file: entry.name,
+            path: itemRelativePath
+          };
         }
       }));
       return items;
     };
 
-    // Check if directory exists
     await fs.access(uploadsPath);
 
     const folderData = await getAllItems(uploadsPath);
 
-    // Wrap with "Private" folder
-    const result = {
+    res.status(200).json({
       folders: [
         {
           folder: "Private",
+          path: toForwardSlash(baseRelativePath),
           contents: folderData
         }
       ]
-    };
-
-    res.status(200).json(result);
+    });
   } catch (error) {
-    console.error("Error fetching client uploaded documents:", error.message);
+    console.error("Error fetching private documents:", error.message);
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
+
+// const getsPrivateDocs = async (req, res) => {
+//   try {
+//     const { id } = req.params;
+
+//     if (!id) {
+//       return res.status(400).json({ error: "Missing folder ID in request params." });
+//     }
+
+//     const uploadsPath = path.join(__dirname, `../uploads/FolderTemplates/${id}/Private`);
+
+//     // Recursive function to get all files and subfolders
+//     const getAllItems = async (dir) => {
+//       const entries = await fs.readdir(dir, { withFileTypes: true });
+//       const items = await Promise.all(entries.map(async (entry) => {
+//         const fullPath = path.join(dir, entry.name);
+//         if (entry.isDirectory()) {
+//           const subItems = await getAllItems(fullPath);
+//           return { folder: entry.name, contents: subItems };
+//         } else {
+//           return { file: entry.name };
+//         }
+//       }));
+//       return items;
+//     };
+
+//     // Check if directory exists
+//     await fs.access(uploadsPath);
+
+//     const folderData = await getAllItems(uploadsPath);
+
+//     // Wrap with "Private" folder
+//     const result = {
+//       folders: [
+//         {
+//           folder: "Private",
+//           contents: folderData
+//         }
+//       ]
+//     };
+
+//     res.status(200).json(result);
+//   } catch (error) {
+//     console.error("Error fetching client uploaded documents:", error.message);
+//     res.status(500).json({ error: "Internal Server Error" });
+//   }
+// };
 // const getsFirmDocs = async (req, res) => {
 //   try {
 //     const { id } = req.params;

@@ -7,6 +7,7 @@ import { MdOutlineDriveFolderUpload } from "react-icons/md";
 import UploadDrawer from "./uploadDocumentWorking";
 import CreateFolder from "./CreateFolder";
 import UploadFolder from "./folderUpload";
+import DocumentManager from "../DocumentManager";
 const ClientDocs = () => {
   const templateId = "67ea43c004956fca8db1d445";
     const folderInputRef = useRef(null);
@@ -198,6 +199,27 @@ const ClientDocs = () => {
         }
       });
     };
+
+    
+  
+  const [data, setData] = useState({ folder: "", contents: [] });
+  const [selectedPath, setSelectedPath] = useState("");
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const response = await axios.get(
+        "http://127.0.0.1:8000/admin/firmDocs/67ea43c004956fca8db1d445"
+      );
+      if (response.data && response.data.folder) {
+        setData({
+          folder: response.data.folder,
+          contents: response.data.contents,
+        });
+      }
+    };
+
+    fetchData();
+  }, []);
     if (error) return <div>Error: {error}</div>;
     if (!combinedFolderStructure ) return <div>Loading...</div>;
   return (
@@ -280,7 +302,15 @@ const ClientDocs = () => {
       <Box>
       {renderTree(combinedFolderStructure)}
       </Box>
+<Box sx={{mt:2, borderBottom:'2px solid grey'}}>
 
+</Box>
+      <DocumentManager
+        folderName={data.folder}
+        contents={data.contents}
+        onPathSelect={(path) => setSelectedPath(path)}
+        selectedPath={selectedPath}
+      />
 
       <UploadDrawer
         open={isDocumentForm}

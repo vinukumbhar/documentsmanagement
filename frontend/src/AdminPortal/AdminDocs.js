@@ -333,69 +333,35 @@ const handleMenuAction = (action) => {
     handleMenuClose();
   }
 };
+const handleFileOpen = (fileItem) => {
+  // Assuming fileItem.filepath = "/uploads/folder1/filename.pdf"
+  const baseUrl = "http://127.0.0.1:8000"; // or http://localhost:8000 in dev
+  const fileUrl = `${baseUrl}/${fileItem.path}`;
 
-  const renderTree = (items) => {
-    return items.map((item) => {
-      if (item.folder) {
-        return (
-          <div key={item.id} style={{ paddingLeft: "20px" }}>
-            <div
-              style={{
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                paddingRight: "8px",
-              }}
-            >
-              <div
-                style={{ display: "flex", alignItems: "center", gap: "8px" }}
-                onClick={() => handleToggle(item.id)}
-              >
-                <span>{item.isOpen ? "📂" : "📁"}</span>
-                <span>{item.folder}</span>
-                {item.sealed && (
-                  <span
-                    style={{
-                      backgroundColor: "#d50000",
-                      color: "#fff",
-                      padding: "2px 6px",
-                      borderRadius: "8px",
-                      fontSize: "12px",
-                    }}
-                  >
-                    Sealed
-                  </span>
-                )}
-              </div>
-              {/* <BsThreeDotsVertical style={{ cursor: "pointer" }} /> */}
-              <div style={{ position: "relative" }}>
-            <IconButton onClick={(e) => handleMenuOpen(e, item)}>
-              <BsThreeDotsVertical />
-            </IconButton>
-          </div>
+  // window.open(fileUrl, "_blank");
+  window.location.href = fileUrl;
 
-            </div>
-            {item.isOpen && item.contents?.length > 0 && (
-              <div>{renderTree(item.contents)}</div>
-            )}
-          </div>
-        );
-      } else {
-        return (
+};
+const renderTree = (items) => {
+  return items.map((item) => {
+    if (item.folder) {
+      return (
+        <div key={item.id} style={{ paddingLeft: "20px" }}>
           <div
-            key={item.id}
             style={{
-              paddingLeft: "40px",
+              cursor: "pointer",
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
               paddingRight: "8px",
             }}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <span>📄</span>
-              <span>{item.file}</span>
+            <div
+              style={{ display: "flex", alignItems: "center", gap: "8px" }}
+              onClick={() => handleToggle(item.id)}
+            >
+              <span>{item.isOpen ? "📂" : "📁"}</span>
+              <span>{item.folder}</span>
               {item.sealed && (
                 <span
                   style={{
@@ -411,15 +377,152 @@ const handleMenuAction = (action) => {
               )}
             </div>
             <div style={{ position: "relative" }}>
+              <IconButton onClick={(e) => handleMenuOpen(e, item)}>
+                <BsThreeDotsVertical />
+              </IconButton>
+            </div>
+          </div>
+          {item.isOpen && item.contents?.length > 0 && (
+            <div>{renderTree(item.contents)}</div>
+          )}
+        </div>
+      );
+    } else {
+      return (
+        <div
+          key={item.id}
+          style={{
+            paddingLeft: "40px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            paddingRight: "8px",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <span>📄</span>
+            <span
+  onClick={() => handleFileOpen(item)}
+  style={{
+    cursor: "pointer",
+    // textDecoration: "underline",
+    // color: "red",
+  }}
+>
+  {item.file}
+</span>
+
+            {item.sealed && (
+              <span
+                style={{
+                  backgroundColor: "#d50000",
+                  color: "#fff",
+                  padding: "2px 6px",
+                  borderRadius: "8px",
+                  fontSize: "12px",
+                }}
+              >
+                Sealed
+              </span>
+            )}
+          </div>
+          <div style={{ position: "relative" }}>
             <IconButton onClick={(e) => handleMenuOpen(e, item)}>
               <BsThreeDotsVertical />
             </IconButton>
           </div>
-          </div>
-        );
-      }
-    });
-  };
+        </div>
+      );
+    }
+  });
+};
+
+  // const renderTree = (items) => {
+  //   return items.map((item) => {
+  //     if (item.folder) {
+  //       return (
+  //         <div key={item.id} style={{ paddingLeft: "20px" }}>
+  //           <div
+  //             style={{
+  //               cursor: "pointer",
+  //               display: "flex",
+  //               alignItems: "center",
+  //               justifyContent: "space-between",
+  //               paddingRight: "8px",
+  //             }}
+  //           >
+  //             <div
+  //               style={{ display: "flex", alignItems: "center", gap: "8px" }}
+  //               onClick={() => handleToggle(item.id)}
+  //             >
+  //               <span>{item.isOpen ? "📂" : "📁"}</span>
+  //               <span>{item.folder}</span>
+  //               {item.sealed && (
+  //                 <span
+  //                   style={{
+  //                     backgroundColor: "#d50000",
+  //                     color: "#fff",
+  //                     padding: "2px 6px",
+  //                     borderRadius: "8px",
+  //                     fontSize: "12px",
+  //                   }}
+  //                 >
+  //                   Sealed
+  //                 </span>
+  //               )}
+  //             </div>
+  //             {/* <BsThreeDotsVertical style={{ cursor: "pointer" }} /> */}
+  //             <div style={{ position: "relative" }}>
+  //           <IconButton onClick={(e) => handleMenuOpen(e, item)}>
+  //             <BsThreeDotsVertical />
+  //           </IconButton>
+  //         </div>
+
+  //           </div>
+  //           {item.isOpen && item.contents?.length > 0 && (
+  //             <div>{renderTree(item.contents)}</div>
+  //           )}
+  //         </div>
+  //       );
+  //     } else {
+  //       return (
+  //         <div
+  //           key={item.id}
+  //           style={{
+  //             paddingLeft: "40px",
+  //             display: "flex",
+  //             alignItems: "center",
+  //             justifyContent: "space-between",
+  //             paddingRight: "8px",
+  //           }}
+  //         >
+  //           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+  //             <span>📄</span>
+  //             <span  onClick={() => handleFileOpen(item)} style={{cursor:'pointer'}}>{item.file}</span>
+  //             {item.sealed && (
+  //               <span
+  //                 style={{
+  //                   backgroundColor: "#d50000",
+  //                   color: "#fff",
+  //                   padding: "2px 6px",
+  //                   borderRadius: "8px",
+  //                   fontSize: "12px",
+  //                 }}
+  //               >
+  //                 Sealed
+  //               </span>
+  //             )}
+  //           </div>
+  //           <div style={{ position: "relative" }}>
+  //           <IconButton onClick={(e) => handleMenuOpen(e, item)}>
+  //             <BsThreeDotsVertical />
+  //           </IconButton>
+  //         </div>
+  //         </div>
+  //       );
+  //     }
+  //   });
+  // };
   
   const fetchPrivateFolders = async () => {
     try {

@@ -16,7 +16,7 @@ const CreateFolder = ({
   open,
   onClose,
   fetchUnSealedFolders,
-  fetchAdminPrivateFolders,
+  // fetchAdminPrivateFolders,
 }) => {
   const templateId = "67ea43c004956fca8db1d445";
 
@@ -320,7 +320,7 @@ const CreateFolder = ({
         setNewFolderName(""); // Clear input
         onClose()
         fetchUnSealedFolders()
-        fetchAdminPrivateFolders()
+        // fetchAdminPrivateFolders()
 
         return response.data;
       })
@@ -459,12 +459,12 @@ const CreateFolder = ({
               setStructFolder({ ...structFolder, folders: newFolders })
             )}
 
-            {renderPrivateContents(privateStructFolder.folders, (newFolders) =>
+            {/* {renderPrivateContents(privateStructFolder.folders, (newFolders) =>
               setPrivateStructFolder({
                 ...privateStructFolder,
                 folders: newFolders,
               })
-            )}
+            )} */}
           </Box>
         </Box>
       </Drawer>

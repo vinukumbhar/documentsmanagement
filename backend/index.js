@@ -661,8 +661,9 @@ app.get("/createFolder", async (req, res) => {
     res.status(500).send({ error: "Failed to create folder" });
   }
 });
-// Serve uploaded files statically
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
+// Serve files from 'uploads' folder
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 
 
